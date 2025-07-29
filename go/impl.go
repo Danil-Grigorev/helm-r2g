@@ -14,6 +14,7 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 type Helm struct{}
@@ -24,14 +25,6 @@ func init() {
 
 // install implements DemoCall.
 func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallResponse) {
-	settings := cli.New()
-	settings.SetNamespace(req.ns)
-	set(req.env.kube_config, &settings.KubeConfig)
-	set(req.env.kube_context, &settings.KubeContext)
-	set(req.env.kube_token, &settings.KubeToken)
-	set(req.env.kube_ca_file, &settings.KubeCaFile)
-	settings.KubeInsecureSkipTLSVerify = req.env.kube_insecure_skip_tls_verify
-
 	install := Install{
 		ReleaseName:     req.release_name,
 		ChartRef:        req.chart,
@@ -51,11 +44,73 @@ func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallRespon
 		}
 	}
 
-	if err := runInstall(context.TODO(), log.Default(), settings, install); err != nil {
+	release, err := runInstall(context.TODO(), log.Default(), initSettings(req.env), install)
+	if err != nil {
 		resp.err = append(resp.err, err.Error())
 
 		return
 	}
+
+	data, err := json.Marshal(release)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to marshal release from install: %w", err).Error())
+
+		return
+	}
+
+	resp.data = string(data)
+
+	return
+}
+
+// list implements HelmCall.
+func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
+	logger := log.Default()
+
+	actionConfig, err := initActionConfigList(initSettings(req.env), logger, req.all_namespaces)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to init action config: %w", err).Error())
+
+		return
+	}
+
+	listClient := action.NewList(actionConfig)
+	listClient.AllNamespaces = req.all_namespaces
+
+	listClient.Sort = action.Sorter(req.sort)
+	listClient.StateMask = action.ListStates(req.state_mask)
+	listClient.SetStateMask()
+
+	listClient.ByDate = req.by_date
+	listClient.SortReverse = req.sort_reverse
+	listClient.Limit = int(req.limit)
+	listClient.Offset = int(req.offset)
+	listClient.Filter = req.filter
+	listClient.NoHeaders = req.no_headers
+	listClient.TimeFormat = req.time_format
+	listClient.Uninstalled = req.uninstalled
+	listClient.Superseded = req.superseded
+	listClient.Uninstalling = req.uninstalling
+	listClient.Deployed = req.deployed
+	listClient.Failed = req.failed
+	listClient.Pending = req.pending
+	listClient.Selector = req.selector
+
+	releases, err := runList(logger, listClient)
+	if err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	data, err := json.Marshal(releases)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to marshal releases from list: %w", err).Error())
+
+		return
+	}
+
+	resp.data = string(data)
 
 	return
 }
@@ -77,11 +132,10 @@ type Install struct {
 	Values          map[string]interface{}
 }
 
-func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettings, install Install) error {
-
+func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettings, install Install) (*release.Release, error) {
 	actionConfig, err := initActionConfig(settings, logger)
 	if err != nil {
-		return fmt.Errorf("failed to init action config: %w", err)
+		return nil, fmt.Errorf("failed to init action config: %w", err)
 	}
 
 	installClient := action.NewInstall(actionConfig)
@@ -93,9 +147,6 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	chartRef := install.ChartRef
 	installClient.Wait = install.Wait
 	installClient.Timeout = time.Duration(install.Timeout) * time.Second
-	if install.Timeout == 0 {
-		installClient.Timeout = 5 * time.Minute
-	}
 	installClient.CreateNamespace = install.CreateNamespace
 	installClient.Namespace = settings.Namespace()
 	installClient.Version = install.ChartVersion
@@ -109,20 +160,20 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 		installClient.InsecureSkipTLSverify,
 		installClient.PlainHTTP)
 	if err != nil {
-		return fmt.Errorf("failed to created registry client: %w", err)
+		return nil, fmt.Errorf("failed to created registry client: %w", err)
 	}
 	installClient.SetRegistryClient(registryClient)
 
 	chartPath, err := installClient.ChartPathOptions.LocateChart(chartRef, settings)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to locate chart: %w", err)
 	}
 
 	providers := getter.All(settings)
 
 	chart, err := loader.Load(chartPath)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to load chart: %w", err)
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
@@ -130,7 +181,7 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 		if err := action.CheckDependencies(chart, chartDependencies); err != nil {
 			err = fmt.Errorf("failed to check chart dependencies: %w", err)
 			if !installClient.DependencyUpdate {
-				return err
+				return nil, err
 			}
 
 			manager := &downloader.Manager{
@@ -145,26 +196,44 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 				RegistryClient:   installClient.GetRegistryClient(),
 			}
 			if err := manager.Update(); err != nil {
-				return err
+				return nil, fmt.Errorf("failed to update chart dependencies: %w", err)
 			}
 			// Reload the chart with the updated Chart.lock file.
 			if chart, err = loader.Load(chartPath); err != nil {
-				return fmt.Errorf("failed to reload chart after repo update: %w", err)
+				return nil, fmt.Errorf("failed to reload chart after repo update: %w", err)
 			}
 		}
 	}
 
 	release, err := installClient.RunWithContext(ctx, chart, install.Values)
 	if err != nil {
-		return fmt.Errorf("failed to run install: %w", err)
+		return nil, fmt.Errorf("failed to run install: %w", err)
 	}
 
-	logger.Printf("release created:\n%+v", *release)
+	return release, nil
+}
 
-	return nil
+func runList(logger *log.Logger, listClient *action.List) ([]*release.Release, error) {
+	results, err := listClient.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run list action: %w", err)
+	}
+
+	return results, nil
 }
 
 var helmDriver string = os.Getenv("HELM_DRIVER")
+
+func initSettings(env HelmEnv) *cli.EnvSettings {
+	settings := cli.New()
+	set(env.kube_config, &settings.KubeConfig)
+	set(env.kube_context, &settings.KubeContext)
+	set(env.kube_token, &settings.KubeToken)
+	set(env.kube_ca_file, &settings.KubeCaFile)
+	settings.KubeInsecureSkipTLSVerify = env.kube_insecure_skip_tls_verify
+
+	return settings
+}
 
 func initActionConfig(settings *cli.EnvSettings, logger *log.Logger) (*action.Configuration, error) {
 	return initActionConfigList(settings, logger, false)

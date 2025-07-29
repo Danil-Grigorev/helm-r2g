@@ -41,7 +41,36 @@ typedef struct HelmChartInstallRequestRef {
 
 typedef struct HelmChartInstallResponseRef {
   struct ListRef err;
+  struct StringRef data;
 } HelmChartInstallResponseRef;
+
+typedef struct HelmChartListRequestRef {
+  struct StringRef ns;
+  struct HelmEnvRef env;
+  bool all;
+  bool all_namespaces;
+  uint64_t sort;
+  bool by_date;
+  bool sort_reverse;
+  uint64_t state_mask;
+  int64_t limit;
+  int64_t offset;
+  struct StringRef filter;
+  bool no_headers;
+  struct StringRef time_format;
+  bool uninstalled;
+  bool superseded;
+  bool uninstalling;
+  bool deployed;
+  bool failed;
+  bool pending;
+  struct StringRef selector;
+} HelmChartListRequestRef;
+
+typedef struct HelmChartListResponseRef {
+  struct ListRef err;
+  struct StringRef data;
+} HelmChartListResponseRef;
 */
 import "C"
 import (
@@ -55,6 +84,7 @@ var HelmCallImpl HelmCall
 
 type HelmCall interface {
 	install(req *HelmChartInstallRequest) HelmChartInstallResponse
+	list(req *HelmChartListRequest) HelmChartListResponse
 }
 
 //export CHelmCall_install
@@ -63,6 +93,19 @@ func CHelmCall_install(req C.HelmChartInstallRequestRef, slot *C.void, cb *C.voi
 	go func() {
 		resp := HelmCallImpl.install(&_new_req)
 		resp_ref, buffer := cvt_ref(cntHelmChartInstallResponse, refHelmChartInstallResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
+//export CHelmCall_list
+func CHelmCall_list(req C.HelmChartListRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newHelmChartListRequest(req)
+	go func() {
+		resp := HelmCallImpl.list(&_new_req)
+		resp_ref, buffer := cvt_ref(cntHelmChartListResponse, refHelmChartListResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -325,17 +368,20 @@ func refHelmEnv(p *HelmEnv, buffer *[]byte) C.HelmEnvRef {
 }
 
 type HelmChartInstallResponse struct {
-	err []string
+	err  []string
+	data string
 }
 
 func newHelmChartInstallResponse(p C.HelmChartInstallResponseRef) HelmChartInstallResponse {
 	return HelmChartInstallResponse{
-		err: new_list_mapper(newString)(p.err),
+		err:  new_list_mapper(newString)(p.err),
+		data: newString(p.data),
 	}
 }
 func ownHelmChartInstallResponse(p C.HelmChartInstallResponseRef) HelmChartInstallResponse {
 	return HelmChartInstallResponse{
-		err: new_list_mapper(ownString)(p.err),
+		err:  new_list_mapper(ownString)(p.err),
+		data: ownString(p.data),
 	}
 }
 func cntHelmChartInstallResponse(s *HelmChartInstallResponse, cnt *uint) [0]C.HelmChartInstallResponseRef {
@@ -344,7 +390,136 @@ func cntHelmChartInstallResponse(s *HelmChartInstallResponse, cnt *uint) [0]C.He
 }
 func refHelmChartInstallResponse(p *HelmChartInstallResponse, buffer *[]byte) C.HelmChartInstallResponseRef {
 	return C.HelmChartInstallResponseRef{
-		err: ref_list_mapper(refString)(&p.err, buffer),
+		err:  ref_list_mapper(refString)(&p.err, buffer),
+		data: refString(&p.data, buffer),
+	}
+}
+
+type HelmChartListRequest struct {
+	ns             string
+	env            HelmEnv
+	all            bool
+	all_namespaces bool
+	sort           uint64
+	by_date        bool
+	sort_reverse   bool
+	state_mask     uint64
+	limit          int64
+	offset         int64
+	filter         string
+	no_headers     bool
+	time_format    string
+	uninstalled    bool
+	superseded     bool
+	uninstalling   bool
+	deployed       bool
+	failed         bool
+	pending        bool
+	selector       string
+}
+
+func newHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
+	return HelmChartListRequest{
+		ns:             newString(p.ns),
+		env:            newHelmEnv(p.env),
+		all:            newC_bool(p.all),
+		all_namespaces: newC_bool(p.all_namespaces),
+		sort:           newC_uint64_t(p.sort),
+		by_date:        newC_bool(p.by_date),
+		sort_reverse:   newC_bool(p.sort_reverse),
+		state_mask:     newC_uint64_t(p.state_mask),
+		limit:          newC_int64_t(p.limit),
+		offset:         newC_int64_t(p.offset),
+		filter:         newString(p.filter),
+		no_headers:     newC_bool(p.no_headers),
+		time_format:    newString(p.time_format),
+		uninstalled:    newC_bool(p.uninstalled),
+		superseded:     newC_bool(p.superseded),
+		uninstalling:   newC_bool(p.uninstalling),
+		deployed:       newC_bool(p.deployed),
+		failed:         newC_bool(p.failed),
+		pending:        newC_bool(p.pending),
+		selector:       newString(p.selector),
+	}
+}
+func ownHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
+	return HelmChartListRequest{
+		ns:             ownString(p.ns),
+		env:            ownHelmEnv(p.env),
+		all:            newC_bool(p.all),
+		all_namespaces: newC_bool(p.all_namespaces),
+		sort:           newC_uint64_t(p.sort),
+		by_date:        newC_bool(p.by_date),
+		sort_reverse:   newC_bool(p.sort_reverse),
+		state_mask:     newC_uint64_t(p.state_mask),
+		limit:          newC_int64_t(p.limit),
+		offset:         newC_int64_t(p.offset),
+		filter:         ownString(p.filter),
+		no_headers:     newC_bool(p.no_headers),
+		time_format:    ownString(p.time_format),
+		uninstalled:    newC_bool(p.uninstalled),
+		superseded:     newC_bool(p.superseded),
+		uninstalling:   newC_bool(p.uninstalling),
+		deployed:       newC_bool(p.deployed),
+		failed:         newC_bool(p.failed),
+		pending:        newC_bool(p.pending),
+		selector:       ownString(p.selector),
+	}
+}
+func cntHelmChartListRequest(s *HelmChartListRequest, cnt *uint) [0]C.HelmChartListRequestRef {
+	cntHelmEnv(&s.env, cnt)
+	return [0]C.HelmChartListRequestRef{}
+}
+func refHelmChartListRequest(p *HelmChartListRequest, buffer *[]byte) C.HelmChartListRequestRef {
+	return C.HelmChartListRequestRef{
+		ns:             refString(&p.ns, buffer),
+		env:            refHelmEnv(&p.env, buffer),
+		all:            refC_bool(&p.all, buffer),
+		all_namespaces: refC_bool(&p.all_namespaces, buffer),
+		sort:           refC_uint64_t(&p.sort, buffer),
+		by_date:        refC_bool(&p.by_date, buffer),
+		sort_reverse:   refC_bool(&p.sort_reverse, buffer),
+		state_mask:     refC_uint64_t(&p.state_mask, buffer),
+		limit:          refC_int64_t(&p.limit, buffer),
+		offset:         refC_int64_t(&p.offset, buffer),
+		filter:         refString(&p.filter, buffer),
+		no_headers:     refC_bool(&p.no_headers, buffer),
+		time_format:    refString(&p.time_format, buffer),
+		uninstalled:    refC_bool(&p.uninstalled, buffer),
+		superseded:     refC_bool(&p.superseded, buffer),
+		uninstalling:   refC_bool(&p.uninstalling, buffer),
+		deployed:       refC_bool(&p.deployed, buffer),
+		failed:         refC_bool(&p.failed, buffer),
+		pending:        refC_bool(&p.pending, buffer),
+		selector:       refString(&p.selector, buffer),
+	}
+}
+
+type HelmChartListResponse struct {
+	err  []string
+	data string
+}
+
+func newHelmChartListResponse(p C.HelmChartListResponseRef) HelmChartListResponse {
+	return HelmChartListResponse{
+		err:  new_list_mapper(newString)(p.err),
+		data: newString(p.data),
+	}
+}
+func ownHelmChartListResponse(p C.HelmChartListResponseRef) HelmChartListResponse {
+	return HelmChartListResponse{
+		err:  new_list_mapper(ownString)(p.err),
+		data: ownString(p.data),
+	}
+}
+func cntHelmChartListResponse(s *HelmChartListResponse, cnt *uint) [0]C.HelmChartListResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.HelmChartListResponseRef{}
+}
+func refHelmChartListResponse(p *HelmChartListResponse, buffer *[]byte) C.HelmChartListResponseRef {
+	return C.HelmChartListResponseRef{
+		err:  ref_list_mapper(refString)(&p.err, buffer),
+		data: refString(&p.data, buffer),
 	}
 }
 func main() {}

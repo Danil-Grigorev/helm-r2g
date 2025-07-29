@@ -4,15 +4,10 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT/Apache-2.0"
 publish = false
+include = ["/src", "/go"]
 
 [dependencies]
 rust2go = { version = "0.4.1" }
-serde_json = "1.0.141"
-tokio = { version = "1", features = ["full"] }
 
 [build-dependencies]
 rust2go = { version = "0.4.1", features = ["build"] }
-
-# [[bin]]
-# name = "helm-r2g"
-# path = "src/main.rs"
