@@ -6,13 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -25,7 +21,7 @@ func init() {
 
 // install implements DemoCall.
 func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallResponse) {
-	install := Install{
+	install := install{
 		ReleaseName:     req.release_name,
 		ChartRef:        req.chart,
 		ChartVersion:    req.version,
@@ -44,7 +40,7 @@ func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallRespon
 		}
 	}
 
-	release, err := runInstall(context.TODO(), log.Default(), initSettings(req.env), install)
+	release, err := runInstall(context.TODO(), log.Default(), initSettings(req.env, req.ns), install)
 	if err != nil {
 		resp.err = append(resp.err, err.Error())
 
@@ -63,11 +59,52 @@ func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallRespon
 	return
 }
 
+// upgrade implements HelmCall.
+func (d Helm) upgrade(req *HelmChartUpgradeRequest) (resp HelmChartUpgradeResponse) {
+	upgrade := upgrade{
+		ReleaseName:  req.release_name,
+		ChartRef:     req.chart,
+		ChartVersion: req.version,
+		Wait:         req.wait,
+		DryRunOption: req.dry_run,
+		ReuseValues:  req.reuse_values,
+		ResetValues:  req.reset_values,
+	}
+
+	set(req.timeout, &upgrade.Timeout)
+
+	if len(req.values) > 0 {
+		if err := json.Unmarshal(req.values, &upgrade.Values); err != nil {
+			resp.err = append(resp.err, err.Error())
+
+			return
+		}
+	}
+
+	release, err := runUpgrade(context.TODO(), log.Default(), initSettings(req.env, req.ns), upgrade)
+	if err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	data, err := json.Marshal(release)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to marshal release from upgrade: %w", err).Error())
+
+		return
+	}
+
+	resp.data = string(data)
+
+	return
+}
+
 // list implements HelmCall.
 func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
 	logger := log.Default()
 
-	actionConfig, err := initActionConfigList(initSettings(req.env), logger, req.all_namespaces)
+	actionConfig, err := initActionConfigList(initSettings(req.env, req.ns), logger, req.all_namespaces)
 	if err != nil {
 		resp.err = append(resp.err, fmt.Errorf("failed to init action config: %w", err).Error())
 
@@ -96,7 +133,7 @@ func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
 	listClient.Pending = req.pending
 	listClient.Selector = req.selector
 
-	releases, err := runList(logger, listClient)
+	releases, err := runList(listClient)
 	if err != nil {
 		resp.err = append(resp.err, err.Error())
 
@@ -110,7 +147,44 @@ func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
 		return
 	}
 
-	resp.data = string(data)
+	if len(releases) > 0 {
+		resp.data = string(data)
+	}
+
+	return
+}
+
+// search implements HelmCall.
+func (d Helm) repo_search(req *HelmChartSearchRequest) (resp HelmChartSearchResponse) {
+	settings := initSettings(req.env, "")
+
+	search := searchRepoOptions{
+		terms:        req.terms,
+		version:      req.version,
+		versions:     req.versions,
+		regexp:       req.regexp,
+		devel:        req.devel,
+		repoFile:     settings.RepositoryConfig,
+		repoCacheDir: settings.RepositoryCache,
+	}
+
+	searchResult, err := search.run()
+	if err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	data, err := json.Marshal(searchResult)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to marshal releases from list: %w", err).Error())
+
+		return
+	}
+
+	if len(searchResult) > 0 {
+		resp.data = string(data)
+	}
 
 	return
 }
@@ -121,99 +195,7 @@ func set[T any](from []T, to *T) {
 	}
 }
 
-type Install struct {
-	ReleaseName     string
-	ChartRef        string
-	ChartVersion    string
-	Wait            bool
-	Timeout         int64
-	CreateNamespace bool
-	DryRunOption    []string
-	Values          map[string]interface{}
-}
-
-func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettings, install Install) (*release.Release, error) {
-	actionConfig, err := initActionConfig(settings, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init action config: %w", err)
-	}
-
-	installClient := action.NewInstall(actionConfig)
-
-	installClient.DryRunOption = "none"
-	set(install.DryRunOption, &installClient.DryRunOption)
-
-	installClient.ReleaseName = install.ReleaseName
-	chartRef := install.ChartRef
-	installClient.Wait = install.Wait
-	installClient.Timeout = time.Duration(install.Timeout) * time.Second
-	installClient.CreateNamespace = install.CreateNamespace
-	installClient.Namespace = settings.Namespace()
-	installClient.Version = install.ChartVersion
-
-	registryClient, err := newRegistryClientTLS(
-		settings,
-		logger,
-		installClient.CertFile,
-		installClient.KeyFile,
-		installClient.CaFile,
-		installClient.InsecureSkipTLSverify,
-		installClient.PlainHTTP)
-	if err != nil {
-		return nil, fmt.Errorf("failed to created registry client: %w", err)
-	}
-	installClient.SetRegistryClient(registryClient)
-
-	chartPath, err := installClient.ChartPathOptions.LocateChart(chartRef, settings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to locate chart: %w", err)
-	}
-
-	providers := getter.All(settings)
-
-	chart, err := loader.Load(chartPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load chart: %w", err)
-	}
-
-	// Check chart dependencies to make sure all are present in /charts
-	if chartDependencies := chart.Metadata.Dependencies; chartDependencies != nil {
-		if err := action.CheckDependencies(chart, chartDependencies); err != nil {
-			err = fmt.Errorf("failed to check chart dependencies: %w", err)
-			if !installClient.DependencyUpdate {
-				return nil, err
-			}
-
-			manager := &downloader.Manager{
-				Out:              logger.Writer(),
-				ChartPath:        chartPath,
-				Keyring:          installClient.ChartPathOptions.Keyring,
-				SkipUpdate:       false,
-				Getters:          providers,
-				RepositoryConfig: settings.RepositoryConfig,
-				RepositoryCache:  settings.RepositoryCache,
-				Debug:            settings.Debug,
-				RegistryClient:   installClient.GetRegistryClient(),
-			}
-			if err := manager.Update(); err != nil {
-				return nil, fmt.Errorf("failed to update chart dependencies: %w", err)
-			}
-			// Reload the chart with the updated Chart.lock file.
-			if chart, err = loader.Load(chartPath); err != nil {
-				return nil, fmt.Errorf("failed to reload chart after repo update: %w", err)
-			}
-		}
-	}
-
-	release, err := installClient.RunWithContext(ctx, chart, install.Values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run install: %w", err)
-	}
-
-	return release, nil
-}
-
-func runList(logger *log.Logger, listClient *action.List) ([]*release.Release, error) {
+func runList(listClient *action.List) ([]*release.Release, error) {
 	results, err := listClient.Run()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run list action: %w", err)
@@ -224,13 +206,14 @@ func runList(logger *log.Logger, listClient *action.List) ([]*release.Release, e
 
 var helmDriver string = os.Getenv("HELM_DRIVER")
 
-func initSettings(env HelmEnv) *cli.EnvSettings {
+func initSettings(env HelmEnv, namespace string) *cli.EnvSettings {
 	settings := cli.New()
 	set(env.kube_config, &settings.KubeConfig)
 	set(env.kube_context, &settings.KubeContext)
 	set(env.kube_token, &settings.KubeToken)
 	set(env.kube_ca_file, &settings.KubeCaFile)
 	settings.KubeInsecureSkipTLSVerify = env.kube_insecure_skip_tls_verify
+	settings.SetNamespace(namespace)
 
 	return settings
 }

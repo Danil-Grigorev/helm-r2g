@@ -71,6 +71,39 @@ typedef struct HelmChartListResponseRef {
   struct ListRef err;
   struct StringRef data;
 } HelmChartListResponseRef;
+
+typedef struct HelmChartSearchRequestRef {
+  bool versions;
+  struct StringRef regexp;
+  bool devel;
+  struct StringRef version;
+  struct ListRef terms;
+  struct HelmEnvRef env;
+} HelmChartSearchRequestRef;
+
+typedef struct HelmChartSearchResponseRef {
+  struct ListRef err;
+  struct StringRef data;
+} HelmChartSearchResponseRef;
+
+typedef struct HelmChartUpgradeRequestRef {
+  struct StringRef release_name;
+  struct StringRef chart;
+  struct StringRef version;
+  struct StringRef ns;
+  bool wait;
+  struct ListRef timeout;
+  struct ListRef values;
+  struct HelmEnvRef env;
+  bool reset_values;
+  bool reuse_values;
+  struct ListRef dry_run;
+} HelmChartUpgradeRequestRef;
+
+typedef struct HelmChartUpgradeResponseRef {
+  struct ListRef err;
+  struct StringRef data;
+} HelmChartUpgradeResponseRef;
 */
 import "C"
 import (
@@ -84,7 +117,9 @@ var HelmCallImpl HelmCall
 
 type HelmCall interface {
 	install(req *HelmChartInstallRequest) HelmChartInstallResponse
+	upgrade(req *HelmChartUpgradeRequest) HelmChartUpgradeResponse
 	list(req *HelmChartListRequest) HelmChartListResponse
+	repo_search(req *HelmChartSearchRequest) HelmChartSearchResponse
 }
 
 //export CHelmCall_install
@@ -100,12 +135,38 @@ func CHelmCall_install(req C.HelmChartInstallRequestRef, slot *C.void, cb *C.voi
 	}()
 }
 
+//export CHelmCall_upgrade
+func CHelmCall_upgrade(req C.HelmChartUpgradeRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newHelmChartUpgradeRequest(req)
+	go func() {
+		resp := HelmCallImpl.upgrade(&_new_req)
+		resp_ref, buffer := cvt_ref(cntHelmChartUpgradeResponse, refHelmChartUpgradeResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
 //export CHelmCall_list
 func CHelmCall_list(req C.HelmChartListRequestRef, slot *C.void, cb *C.void) {
 	_new_req := newHelmChartListRequest(req)
 	go func() {
 		resp := HelmCallImpl.list(&_new_req)
 		resp_ref, buffer := cvt_ref(cntHelmChartListResponse, refHelmChartListResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
+//export CHelmCall_repo_search
+func CHelmCall_repo_search(req C.HelmChartSearchRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newHelmChartSearchRequest(req)
+	go func() {
+		resp := HelmCallImpl.repo_search(&_new_req)
+		resp_ref, buffer := cvt_ref(cntHelmChartSearchResponse, refHelmChartSearchResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -324,6 +385,71 @@ func refHelmChartInstallRequest(p *HelmChartInstallRequest, buffer *[]byte) C.He
 	}
 }
 
+type HelmChartUpgradeRequest struct {
+	release_name string
+	chart        string
+	version      string
+	ns           string
+	wait         bool
+	timeout      []int64
+	values       []uint8
+	env          HelmEnv
+	reset_values bool
+	reuse_values bool
+	dry_run      []string
+}
+
+func newHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgradeRequest {
+	return HelmChartUpgradeRequest{
+		release_name: newString(p.release_name),
+		chart:        newString(p.chart),
+		version:      newString(p.version),
+		ns:           newString(p.ns),
+		wait:         newC_bool(p.wait),
+		timeout:      new_list_mapper_primitive(newC_int64_t)(p.timeout),
+		values:       new_list_mapper_primitive(newC_uint8_t)(p.values),
+		env:          newHelmEnv(p.env),
+		reset_values: newC_bool(p.reset_values),
+		reuse_values: newC_bool(p.reuse_values),
+		dry_run:      new_list_mapper(newString)(p.dry_run),
+	}
+}
+func ownHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgradeRequest {
+	return HelmChartUpgradeRequest{
+		release_name: ownString(p.release_name),
+		chart:        ownString(p.chart),
+		version:      ownString(p.version),
+		ns:           ownString(p.ns),
+		wait:         newC_bool(p.wait),
+		timeout:      new_list_mapper(newC_int64_t)(p.timeout),
+		values:       new_list_mapper(newC_uint8_t)(p.values),
+		env:          ownHelmEnv(p.env),
+		reset_values: newC_bool(p.reset_values),
+		reuse_values: newC_bool(p.reuse_values),
+		dry_run:      new_list_mapper(ownString)(p.dry_run),
+	}
+}
+func cntHelmChartUpgradeRequest(s *HelmChartUpgradeRequest, cnt *uint) [0]C.HelmChartUpgradeRequestRef {
+	cntHelmEnv(&s.env, cnt)
+	cnt_list_mapper(cntString)(&s.dry_run, cnt)
+	return [0]C.HelmChartUpgradeRequestRef{}
+}
+func refHelmChartUpgradeRequest(p *HelmChartUpgradeRequest, buffer *[]byte) C.HelmChartUpgradeRequestRef {
+	return C.HelmChartUpgradeRequestRef{
+		release_name: refString(&p.release_name, buffer),
+		chart:        refString(&p.chart, buffer),
+		version:      refString(&p.version, buffer),
+		ns:           refString(&p.ns, buffer),
+		wait:         refC_bool(&p.wait, buffer),
+		timeout:      ref_list_mapper_primitive(refC_int64_t)(&p.timeout, buffer),
+		values:       ref_list_mapper_primitive(refC_uint8_t)(&p.values, buffer),
+		env:          refHelmEnv(&p.env, buffer),
+		reset_values: refC_bool(&p.reset_values, buffer),
+		reuse_values: refC_bool(&p.reuse_values, buffer),
+		dry_run:      ref_list_mapper(refString)(&p.dry_run, buffer),
+	}
+}
+
 type HelmEnv struct {
 	kube_config                   []string
 	kube_context                  []string
@@ -390,6 +516,34 @@ func cntHelmChartInstallResponse(s *HelmChartInstallResponse, cnt *uint) [0]C.He
 }
 func refHelmChartInstallResponse(p *HelmChartInstallResponse, buffer *[]byte) C.HelmChartInstallResponseRef {
 	return C.HelmChartInstallResponseRef{
+		err:  ref_list_mapper(refString)(&p.err, buffer),
+		data: refString(&p.data, buffer),
+	}
+}
+
+type HelmChartUpgradeResponse struct {
+	err  []string
+	data string
+}
+
+func newHelmChartUpgradeResponse(p C.HelmChartUpgradeResponseRef) HelmChartUpgradeResponse {
+	return HelmChartUpgradeResponse{
+		err:  new_list_mapper(newString)(p.err),
+		data: newString(p.data),
+	}
+}
+func ownHelmChartUpgradeResponse(p C.HelmChartUpgradeResponseRef) HelmChartUpgradeResponse {
+	return HelmChartUpgradeResponse{
+		err:  new_list_mapper(ownString)(p.err),
+		data: ownString(p.data),
+	}
+}
+func cntHelmChartUpgradeResponse(s *HelmChartUpgradeResponse, cnt *uint) [0]C.HelmChartUpgradeResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.HelmChartUpgradeResponseRef{}
+}
+func refHelmChartUpgradeResponse(p *HelmChartUpgradeResponse, buffer *[]byte) C.HelmChartUpgradeResponseRef {
+	return C.HelmChartUpgradeResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}
@@ -518,6 +672,79 @@ func cntHelmChartListResponse(s *HelmChartListResponse, cnt *uint) [0]C.HelmChar
 }
 func refHelmChartListResponse(p *HelmChartListResponse, buffer *[]byte) C.HelmChartListResponseRef {
 	return C.HelmChartListResponseRef{
+		err:  ref_list_mapper(refString)(&p.err, buffer),
+		data: refString(&p.data, buffer),
+	}
+}
+
+type HelmChartSearchRequest struct {
+	versions bool
+	regexp   string
+	devel    bool
+	version  string
+	terms    []string
+	env      HelmEnv
+}
+
+func newHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchRequest {
+	return HelmChartSearchRequest{
+		versions: newC_bool(p.versions),
+		regexp:   newString(p.regexp),
+		devel:    newC_bool(p.devel),
+		version:  newString(p.version),
+		terms:    new_list_mapper(newString)(p.terms),
+		env:      newHelmEnv(p.env),
+	}
+}
+func ownHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchRequest {
+	return HelmChartSearchRequest{
+		versions: newC_bool(p.versions),
+		regexp:   ownString(p.regexp),
+		devel:    newC_bool(p.devel),
+		version:  ownString(p.version),
+		terms:    new_list_mapper(ownString)(p.terms),
+		env:      ownHelmEnv(p.env),
+	}
+}
+func cntHelmChartSearchRequest(s *HelmChartSearchRequest, cnt *uint) [0]C.HelmChartSearchRequestRef {
+	cnt_list_mapper(cntString)(&s.terms, cnt)
+	cntHelmEnv(&s.env, cnt)
+	return [0]C.HelmChartSearchRequestRef{}
+}
+func refHelmChartSearchRequest(p *HelmChartSearchRequest, buffer *[]byte) C.HelmChartSearchRequestRef {
+	return C.HelmChartSearchRequestRef{
+		versions: refC_bool(&p.versions, buffer),
+		regexp:   refString(&p.regexp, buffer),
+		devel:    refC_bool(&p.devel, buffer),
+		version:  refString(&p.version, buffer),
+		terms:    ref_list_mapper(refString)(&p.terms, buffer),
+		env:      refHelmEnv(&p.env, buffer),
+	}
+}
+
+type HelmChartSearchResponse struct {
+	err  []string
+	data string
+}
+
+func newHelmChartSearchResponse(p C.HelmChartSearchResponseRef) HelmChartSearchResponse {
+	return HelmChartSearchResponse{
+		err:  new_list_mapper(newString)(p.err),
+		data: newString(p.data),
+	}
+}
+func ownHelmChartSearchResponse(p C.HelmChartSearchResponseRef) HelmChartSearchResponse {
+	return HelmChartSearchResponse{
+		err:  new_list_mapper(ownString)(p.err),
+		data: ownString(p.data),
+	}
+}
+func cntHelmChartSearchResponse(s *HelmChartSearchResponse, cnt *uint) [0]C.HelmChartSearchResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.HelmChartSearchResponseRef{}
+}
+func refHelmChartSearchResponse(p *HelmChartSearchResponse, buffer *[]byte) C.HelmChartSearchResponseRef {
+	return C.HelmChartSearchResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}

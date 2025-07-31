@@ -49,6 +49,39 @@ impl Default for HelmChartInstallRequest {
     }
 }
 
+#[derive(rust2go::R2G, Clone)]
+pub struct HelmChartUpgradeRequest {
+    pub release_name: String,
+    pub chart: String,
+    pub version: String,
+    pub ns: String,
+    pub wait: bool,
+    pub timeout: Vec<i64>,
+    pub values: Vec<u8>,
+    pub env: HelmEnv,
+    pub reset_values: bool,
+    pub reuse_values: bool,
+    pub dry_run: Vec<String>,
+}
+
+impl Default for HelmChartUpgradeRequest {
+    fn default() -> Self {
+        HelmChartUpgradeRequest {
+            timeout: vec![300],
+            release_name: Default::default(),
+            chart: Default::default(),
+            version: Default::default(),
+            ns: Default::default(),
+            wait: Default::default(),
+            values: Default::default(),
+            env: Default::default(),
+            dry_run: Default::default(),
+            reset_values: Default::default(),
+            reuse_values: Default::default(),
+        }
+    }
+}
+
 #[derive(rust2go::R2G, Clone, Default)]
 pub struct HelmEnv {
     // KubeConfig is the path to the kubeconfig file
@@ -66,6 +99,12 @@ pub struct HelmEnv {
 
 #[derive(rust2go::R2G, Clone)]
 pub struct HelmChartInstallResponse {
+    pub err: Vec<String>,
+    pub data: String,
+}
+
+#[derive(rust2go::R2G, Clone)]
+pub struct HelmChartUpgradeResponse {
     pub err: Vec<String>,
     pub data: String,
 }
@@ -111,6 +150,22 @@ pub struct HelmChartListResponse {
     pub data: String,
 }
 
+#[derive(rust2go::R2G, Clone, Default)]
+pub struct HelmChartSearchRequest {
+    pub versions: bool,
+    pub regexp: String,
+    pub devel: bool,
+    pub version: String,
+    pub terms: Vec<String>,
+    pub env: HelmEnv,
+}
+
+#[derive(rust2go::R2G, Clone)]
+pub struct HelmChartSearchResponse {
+    pub err: Vec<String>,
+    pub data: String,
+}
+
 // Define the call trait.
 // It can be defined in 2 styles: sync and async.
 // If the golang side is purely calculation logic, and not very heavy, use sync can be more efficient.
@@ -124,5 +179,9 @@ pub trait HelmCall {
     #[drop_safe_ret]
     async fn install(req: HelmChartInstallRequest) -> HelmChartInstallResponse;
     #[drop_safe_ret]
+    async fn upgrade(req: HelmChartUpgradeRequest) -> HelmChartUpgradeResponse;
+    #[drop_safe_ret]
     async fn list(req: HelmChartListRequest) -> HelmChartListResponse;
+    #[drop_safe_ret]
+    async fn repo_search(req: HelmChartSearchRequest) -> HelmChartSearchResponse;
 }
