@@ -100,7 +100,5 @@ func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 		return nil, fmt.Errorf("failed to run upgrade action: %w", err)
 	}
 
-	logger.Printf("release: %+v", release)
-
 	return release, nil
 }

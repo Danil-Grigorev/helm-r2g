@@ -189,6 +189,36 @@ func (d Helm) repo_search(req *HelmChartSearchRequest) (resp HelmChartSearchResp
 	return
 }
 
+// repo_add implements HelmCall.
+func (d Helm) repo_add(req *HelmChartAddRequest) (resp HelmChartAddResponse) {
+	settings := initSettings(req.env, "")
+
+	add := repoAddOptions{
+		name:                  req.name,
+		url:                   req.url,
+		username:              req.username,
+		password:              req.password,
+		passCredentialsAll:    req.pass_credentials_all,
+		forceUpdate:           req.force_update,
+		allowDeprecatedRepos:  req.allow_deprecated_repos,
+		certFile:              req.cert_file,
+		keyFile:               req.key_file,
+		caFile:                req.ca_file,
+		insecureSkipTLSverify: req.insecure_skip_tls_sverify,
+		repoFile:              settings.RepositoryConfig,
+		repoCache:             settings.RepositoryCache,
+	}
+
+	err := add.run(log.Default(), settings)
+	if err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	return
+}
+
 func set[T any](from []T, to *T) {
 	if len(from) > 0 {
 		*to = from[0]

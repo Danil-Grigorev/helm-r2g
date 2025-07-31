@@ -26,6 +26,26 @@ typedef struct HelmEnvRef {
   bool kube_insecure_skip_tls_verify;
 } HelmEnvRef;
 
+typedef struct HelmChartAddRequestRef {
+  struct StringRef name;
+  struct StringRef url;
+  struct StringRef username;
+  struct StringRef password;
+  bool password_from_stdin_opt;
+  bool pass_credentials_all;
+  bool force_update;
+  bool allow_deprecated_repos;
+  struct StringRef cert_file;
+  struct StringRef key_file;
+  struct StringRef ca_file;
+  bool insecure_skip_tls_sverify;
+  struct HelmEnvRef env;
+} HelmChartAddRequestRef;
+
+typedef struct HelmChartAddResponseRef {
+  struct ListRef err;
+} HelmChartAddResponseRef;
+
 typedef struct HelmChartInstallRequestRef {
   struct StringRef release_name;
   struct StringRef chart;
@@ -119,6 +139,7 @@ type HelmCall interface {
 	install(req *HelmChartInstallRequest) HelmChartInstallResponse
 	upgrade(req *HelmChartUpgradeRequest) HelmChartUpgradeResponse
 	list(req *HelmChartListRequest) HelmChartListResponse
+	repo_add(req *HelmChartAddRequest) HelmChartAddResponse
 	repo_search(req *HelmChartSearchRequest) HelmChartSearchResponse
 }
 
@@ -154,6 +175,19 @@ func CHelmCall_list(req C.HelmChartListRequestRef, slot *C.void, cb *C.void) {
 	go func() {
 		resp := HelmCallImpl.list(&_new_req)
 		resp_ref, buffer := cvt_ref(cntHelmChartListResponse, refHelmChartListResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
+//export CHelmCall_repo_add
+func CHelmCall_repo_add(req C.HelmChartAddRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newHelmChartAddRequest(req)
+	go func() {
+		resp := HelmCallImpl.repo_add(&_new_req)
+		resp_ref, buffer := cvt_ref(cntHelmChartAddResponse, refHelmChartAddResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -747,6 +781,102 @@ func refHelmChartSearchResponse(p *HelmChartSearchResponse, buffer *[]byte) C.He
 	return C.HelmChartSearchResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
+	}
+}
+
+type HelmChartAddRequest struct {
+	name                      string
+	url                       string
+	username                  string
+	password                  string
+	password_from_stdin_opt   bool
+	pass_credentials_all      bool
+	force_update              bool
+	allow_deprecated_repos    bool
+	cert_file                 string
+	key_file                  string
+	ca_file                   string
+	insecure_skip_tls_sverify bool
+	env                       HelmEnv
+}
+
+func newHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
+	return HelmChartAddRequest{
+		name:                      newString(p.name),
+		url:                       newString(p.url),
+		username:                  newString(p.username),
+		password:                  newString(p.password),
+		password_from_stdin_opt:   newC_bool(p.password_from_stdin_opt),
+		pass_credentials_all:      newC_bool(p.pass_credentials_all),
+		force_update:              newC_bool(p.force_update),
+		allow_deprecated_repos:    newC_bool(p.allow_deprecated_repos),
+		cert_file:                 newString(p.cert_file),
+		key_file:                  newString(p.key_file),
+		ca_file:                   newString(p.ca_file),
+		insecure_skip_tls_sverify: newC_bool(p.insecure_skip_tls_sverify),
+		env:                       newHelmEnv(p.env),
+	}
+}
+func ownHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
+	return HelmChartAddRequest{
+		name:                      ownString(p.name),
+		url:                       ownString(p.url),
+		username:                  ownString(p.username),
+		password:                  ownString(p.password),
+		password_from_stdin_opt:   newC_bool(p.password_from_stdin_opt),
+		pass_credentials_all:      newC_bool(p.pass_credentials_all),
+		force_update:              newC_bool(p.force_update),
+		allow_deprecated_repos:    newC_bool(p.allow_deprecated_repos),
+		cert_file:                 ownString(p.cert_file),
+		key_file:                  ownString(p.key_file),
+		ca_file:                   ownString(p.ca_file),
+		insecure_skip_tls_sverify: newC_bool(p.insecure_skip_tls_sverify),
+		env:                       ownHelmEnv(p.env),
+	}
+}
+func cntHelmChartAddRequest(s *HelmChartAddRequest, cnt *uint) [0]C.HelmChartAddRequestRef {
+	cntHelmEnv(&s.env, cnt)
+	return [0]C.HelmChartAddRequestRef{}
+}
+func refHelmChartAddRequest(p *HelmChartAddRequest, buffer *[]byte) C.HelmChartAddRequestRef {
+	return C.HelmChartAddRequestRef{
+		name:                      refString(&p.name, buffer),
+		url:                       refString(&p.url, buffer),
+		username:                  refString(&p.username, buffer),
+		password:                  refString(&p.password, buffer),
+		password_from_stdin_opt:   refC_bool(&p.password_from_stdin_opt, buffer),
+		pass_credentials_all:      refC_bool(&p.pass_credentials_all, buffer),
+		force_update:              refC_bool(&p.force_update, buffer),
+		allow_deprecated_repos:    refC_bool(&p.allow_deprecated_repos, buffer),
+		cert_file:                 refString(&p.cert_file, buffer),
+		key_file:                  refString(&p.key_file, buffer),
+		ca_file:                   refString(&p.ca_file, buffer),
+		insecure_skip_tls_sverify: refC_bool(&p.insecure_skip_tls_sverify, buffer),
+		env:                       refHelmEnv(&p.env, buffer),
+	}
+}
+
+type HelmChartAddResponse struct {
+	err []string
+}
+
+func newHelmChartAddResponse(p C.HelmChartAddResponseRef) HelmChartAddResponse {
+	return HelmChartAddResponse{
+		err: new_list_mapper(newString)(p.err),
+	}
+}
+func ownHelmChartAddResponse(p C.HelmChartAddResponseRef) HelmChartAddResponse {
+	return HelmChartAddResponse{
+		err: new_list_mapper(ownString)(p.err),
+	}
+}
+func cntHelmChartAddResponse(s *HelmChartAddResponse, cnt *uint) [0]C.HelmChartAddResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.HelmChartAddResponseRef{}
+}
+func refHelmChartAddResponse(p *HelmChartAddResponse, buffer *[]byte) C.HelmChartAddResponseRef {
+	return C.HelmChartAddResponseRef{
+		err: ref_list_mapper(refString)(&p.err, buffer),
 	}
 }
 func main() {}

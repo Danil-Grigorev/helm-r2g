@@ -166,6 +166,29 @@ pub struct HelmChartSearchResponse {
     pub data: String,
 }
 
+#[derive(rust2go::R2G, Clone, Default)]
+pub struct HelmChartAddRequest {
+    pub name: String,
+    pub url: String,
+    pub username: String,
+    pub password: String,
+    pub password_from_stdin_opt: bool,
+    pub pass_credentials_all: bool,
+    pub force_update: bool,
+    pub allow_deprecated_repos: bool,
+    pub cert_file: String,
+    pub key_file: String,
+    pub ca_file: String,
+    pub insecure_skip_tls_sverify: bool,
+
+    pub env: HelmEnv,
+}
+
+#[derive(rust2go::R2G, Clone)]
+pub struct HelmChartAddResponse {
+    pub err: Vec<String>,
+}
+
 // Define the call trait.
 // It can be defined in 2 styles: sync and async.
 // If the golang side is purely calculation logic, and not very heavy, use sync can be more efficient.
@@ -182,6 +205,8 @@ pub trait HelmCall {
     async fn upgrade(req: HelmChartUpgradeRequest) -> HelmChartUpgradeResponse;
     #[drop_safe_ret]
     async fn list(req: HelmChartListRequest) -> HelmChartListResponse;
+    #[drop_safe_ret]
+    async fn repo_add(req: HelmChartAddRequest) -> HelmChartAddResponse;
     #[drop_safe_ret]
     async fn repo_search(req: HelmChartSearchRequest) -> HelmChartSearchResponse;
 }

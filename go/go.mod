@@ -6,8 +6,10 @@ toolchain go1.24.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/gofrs/flock v0.12.1
 	github.com/ihciah/rust2go v0.0.0-20250726175549-557d7a3a4e27
 	helm.sh/helm/v3 v3.18.4
+	sigs.k8s.io/yaml v1.5.0
 )
 
 require (
@@ -131,5 +133,4 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.20.1 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
 )
