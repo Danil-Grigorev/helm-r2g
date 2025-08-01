@@ -26,7 +26,7 @@ typedef struct HelmEnvRef {
   bool kube_insecure_skip_tls_verify;
 } HelmEnvRef;
 
-typedef struct HelmChartAddRequestRef {
+typedef struct AddRequestRef {
   struct StringRef name;
   struct StringRef url;
   struct StringRef username;
@@ -40,13 +40,13 @@ typedef struct HelmChartAddRequestRef {
   struct StringRef ca_file;
   bool insecure_skip_tls_sverify;
   struct HelmEnvRef env;
-} HelmChartAddRequestRef;
+} AddRequestRef;
 
-typedef struct HelmChartAddResponseRef {
+typedef struct AddResponseRef {
   struct ListRef err;
-} HelmChartAddResponseRef;
+} AddResponseRef;
 
-typedef struct HelmChartInstallRequestRef {
+typedef struct InstallRequestRef {
   struct StringRef release_name;
   struct StringRef chart;
   struct StringRef version;
@@ -57,14 +57,14 @@ typedef struct HelmChartInstallRequestRef {
   struct ListRef values;
   struct HelmEnvRef env;
   struct ListRef dry_run;
-} HelmChartInstallRequestRef;
+} InstallRequestRef;
 
-typedef struct HelmChartInstallResponseRef {
+typedef struct InstallResponseRef {
   struct ListRef err;
   struct StringRef data;
-} HelmChartInstallResponseRef;
+} InstallResponseRef;
 
-typedef struct HelmChartListRequestRef {
+typedef struct ListRequestRef {
   struct StringRef ns;
   struct HelmEnvRef env;
   bool all;
@@ -85,28 +85,63 @@ typedef struct HelmChartListRequestRef {
   bool failed;
   bool pending;
   struct StringRef selector;
-} HelmChartListRequestRef;
+} ListRequestRef;
 
-typedef struct HelmChartListResponseRef {
+typedef struct ListResponseRef {
   struct ListRef err;
   struct StringRef data;
-} HelmChartListResponseRef;
+} ListResponseRef;
 
-typedef struct HelmChartSearchRequestRef {
+typedef struct LoginRequestRef {
+  struct StringRef hostname;
+  struct StringRef username;
+  struct StringRef password;
+  struct StringRef cert_file;
+  struct StringRef key_file;
+  struct StringRef ca_file;
+  bool insecure;
+  bool plain_http;
+  struct HelmEnvRef env;
+} LoginRequestRef;
+
+typedef struct LoginResponseRef {
+  struct ListRef err;
+} LoginResponseRef;
+
+typedef struct SearchRequestRef {
   bool versions;
   struct StringRef regexp;
   bool devel;
   struct StringRef version;
   struct ListRef terms;
   struct HelmEnvRef env;
-} HelmChartSearchRequestRef;
+} SearchRequestRef;
 
-typedef struct HelmChartSearchResponseRef {
+typedef struct SearchResponseRef {
   struct ListRef err;
   struct StringRef data;
-} HelmChartSearchResponseRef;
+} SearchResponseRef;
 
-typedef struct HelmChartUpgradeRequestRef {
+typedef struct UninstallRequestRef {
+  struct StringRef ns;
+  struct StringRef release_name;
+  bool disable_hooks;
+  bool dry_run;
+  bool ignore_not_found;
+  bool keep_history;
+  bool wait;
+  struct StringRef deletion_propagation;
+  struct ListRef timeout;
+  struct StringRef description;
+  struct HelmEnvRef env;
+} UninstallRequestRef;
+
+typedef struct UninstallResponseRef {
+  struct ListRef err;
+  struct StringRef data;
+} UninstallResponseRef;
+
+typedef struct UpgradeRequestRef {
   struct StringRef release_name;
   struct StringRef chart;
   struct StringRef version;
@@ -118,12 +153,12 @@ typedef struct HelmChartUpgradeRequestRef {
   bool reset_values;
   bool reuse_values;
   struct ListRef dry_run;
-} HelmChartUpgradeRequestRef;
+} UpgradeRequestRef;
 
-typedef struct HelmChartUpgradeResponseRef {
+typedef struct UpgradeResponseRef {
   struct ListRef err;
   struct StringRef data;
-} HelmChartUpgradeResponseRef;
+} UpgradeResponseRef;
 */
 import "C"
 import (
@@ -136,19 +171,21 @@ import (
 var HelmCallImpl HelmCall
 
 type HelmCall interface {
-	install(req *HelmChartInstallRequest) HelmChartInstallResponse
-	upgrade(req *HelmChartUpgradeRequest) HelmChartUpgradeResponse
-	list(req *HelmChartListRequest) HelmChartListResponse
-	repo_add(req *HelmChartAddRequest) HelmChartAddResponse
-	repo_search(req *HelmChartSearchRequest) HelmChartSearchResponse
+	install(req *InstallRequest) InstallResponse
+	upgrade(req *UpgradeRequest) UpgradeResponse
+	uninstall(req *UninstallRequest) UninstallResponse
+	list(req *ListRequest) ListResponse
+	repo_add(req *AddRequest) AddResponse
+	repo_search(req *SearchRequest) SearchResponse
+	registry_login(req *LoginRequest) LoginResponse
 }
 
 //export CHelmCall_install
-func CHelmCall_install(req C.HelmChartInstallRequestRef, slot *C.void, cb *C.void) {
-	_new_req := newHelmChartInstallRequest(req)
+func CHelmCall_install(req C.InstallRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newInstallRequest(req)
 	go func() {
 		resp := HelmCallImpl.install(&_new_req)
-		resp_ref, buffer := cvt_ref(cntHelmChartInstallResponse, refHelmChartInstallResponse)(&resp)
+		resp_ref, buffer := cvt_ref(cntInstallResponse, refInstallResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -157,11 +194,24 @@ func CHelmCall_install(req C.HelmChartInstallRequestRef, slot *C.void, cb *C.voi
 }
 
 //export CHelmCall_upgrade
-func CHelmCall_upgrade(req C.HelmChartUpgradeRequestRef, slot *C.void, cb *C.void) {
-	_new_req := newHelmChartUpgradeRequest(req)
+func CHelmCall_upgrade(req C.UpgradeRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newUpgradeRequest(req)
 	go func() {
 		resp := HelmCallImpl.upgrade(&_new_req)
-		resp_ref, buffer := cvt_ref(cntHelmChartUpgradeResponse, refHelmChartUpgradeResponse)(&resp)
+		resp_ref, buffer := cvt_ref(cntUpgradeResponse, refUpgradeResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
+//export CHelmCall_uninstall
+func CHelmCall_uninstall(req C.UninstallRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newUninstallRequest(req)
+	go func() {
+		resp := HelmCallImpl.uninstall(&_new_req)
+		resp_ref, buffer := cvt_ref(cntUninstallResponse, refUninstallResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -170,11 +220,11 @@ func CHelmCall_upgrade(req C.HelmChartUpgradeRequestRef, slot *C.void, cb *C.voi
 }
 
 //export CHelmCall_list
-func CHelmCall_list(req C.HelmChartListRequestRef, slot *C.void, cb *C.void) {
-	_new_req := newHelmChartListRequest(req)
+func CHelmCall_list(req C.ListRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newListRequest(req)
 	go func() {
 		resp := HelmCallImpl.list(&_new_req)
-		resp_ref, buffer := cvt_ref(cntHelmChartListResponse, refHelmChartListResponse)(&resp)
+		resp_ref, buffer := cvt_ref(cntListResponse, refListResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -183,11 +233,11 @@ func CHelmCall_list(req C.HelmChartListRequestRef, slot *C.void, cb *C.void) {
 }
 
 //export CHelmCall_repo_add
-func CHelmCall_repo_add(req C.HelmChartAddRequestRef, slot *C.void, cb *C.void) {
-	_new_req := newHelmChartAddRequest(req)
+func CHelmCall_repo_add(req C.AddRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newAddRequest(req)
 	go func() {
 		resp := HelmCallImpl.repo_add(&_new_req)
-		resp_ref, buffer := cvt_ref(cntHelmChartAddResponse, refHelmChartAddResponse)(&resp)
+		resp_ref, buffer := cvt_ref(cntAddResponse, refAddResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -196,11 +246,24 @@ func CHelmCall_repo_add(req C.HelmChartAddRequestRef, slot *C.void, cb *C.void) 
 }
 
 //export CHelmCall_repo_search
-func CHelmCall_repo_search(req C.HelmChartSearchRequestRef, slot *C.void, cb *C.void) {
-	_new_req := newHelmChartSearchRequest(req)
+func CHelmCall_repo_search(req C.SearchRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newSearchRequest(req)
 	go func() {
 		resp := HelmCallImpl.repo_search(&_new_req)
-		resp_ref, buffer := cvt_ref(cntHelmChartSearchResponse, refHelmChartSearchResponse)(&resp)
+		resp_ref, buffer := cvt_ref(cntSearchResponse, refSearchResponse)(&resp)
+		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
+		runtime.KeepAlive(resp_ref)
+		runtime.KeepAlive(resp)
+		runtime.KeepAlive(buffer)
+	}()
+}
+
+//export CHelmCall_registry_login
+func CHelmCall_registry_login(req C.LoginRequestRef, slot *C.void, cb *C.void) {
+	_new_req := newLoginRequest(req)
+	go func() {
+		resp := HelmCallImpl.registry_login(&_new_req)
+		resp_ref, buffer := cvt_ref(cntLoginResponse, refLoginResponse)(&resp)
 		asmcall.CallFuncG0P2(unsafe.Pointer(cb), unsafe.Pointer(&resp_ref), unsafe.Pointer(slot))
 		runtime.KeepAlive(resp_ref)
 		runtime.KeepAlive(resp)
@@ -358,7 +421,7 @@ func refC_intptr_t(p *int, _ *[]byte) C.intptr_t    { return C.intptr_t(*p) }
 func refC_float(p *float32, _ *[]byte) C.float      { return C.float(*p) }
 func refC_double(p *float64, _ *[]byte) C.double    { return C.double(*p) }
 
-type HelmChartInstallRequest struct {
+type InstallRequest struct {
 	release_name     string
 	chart            string
 	version          string
@@ -371,8 +434,8 @@ type HelmChartInstallRequest struct {
 	dry_run          []string
 }
 
-func newHelmChartInstallRequest(p C.HelmChartInstallRequestRef) HelmChartInstallRequest {
-	return HelmChartInstallRequest{
+func newInstallRequest(p C.InstallRequestRef) InstallRequest {
+	return InstallRequest{
 		release_name:     newString(p.release_name),
 		chart:            newString(p.chart),
 		version:          newString(p.version),
@@ -385,8 +448,8 @@ func newHelmChartInstallRequest(p C.HelmChartInstallRequestRef) HelmChartInstall
 		dry_run:          new_list_mapper(newString)(p.dry_run),
 	}
 }
-func ownHelmChartInstallRequest(p C.HelmChartInstallRequestRef) HelmChartInstallRequest {
-	return HelmChartInstallRequest{
+func ownInstallRequest(p C.InstallRequestRef) InstallRequest {
+	return InstallRequest{
 		release_name:     ownString(p.release_name),
 		chart:            ownString(p.chart),
 		version:          ownString(p.version),
@@ -399,13 +462,13 @@ func ownHelmChartInstallRequest(p C.HelmChartInstallRequestRef) HelmChartInstall
 		dry_run:          new_list_mapper(ownString)(p.dry_run),
 	}
 }
-func cntHelmChartInstallRequest(s *HelmChartInstallRequest, cnt *uint) [0]C.HelmChartInstallRequestRef {
+func cntInstallRequest(s *InstallRequest, cnt *uint) [0]C.InstallRequestRef {
 	cntHelmEnv(&s.env, cnt)
 	cnt_list_mapper(cntString)(&s.dry_run, cnt)
-	return [0]C.HelmChartInstallRequestRef{}
+	return [0]C.InstallRequestRef{}
 }
-func refHelmChartInstallRequest(p *HelmChartInstallRequest, buffer *[]byte) C.HelmChartInstallRequestRef {
-	return C.HelmChartInstallRequestRef{
+func refInstallRequest(p *InstallRequest, buffer *[]byte) C.InstallRequestRef {
+	return C.InstallRequestRef{
 		release_name:     refString(&p.release_name, buffer),
 		chart:            refString(&p.chart, buffer),
 		version:          refString(&p.version, buffer),
@@ -419,7 +482,7 @@ func refHelmChartInstallRequest(p *HelmChartInstallRequest, buffer *[]byte) C.He
 	}
 }
 
-type HelmChartUpgradeRequest struct {
+type UpgradeRequest struct {
 	release_name string
 	chart        string
 	version      string
@@ -433,8 +496,8 @@ type HelmChartUpgradeRequest struct {
 	dry_run      []string
 }
 
-func newHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgradeRequest {
-	return HelmChartUpgradeRequest{
+func newUpgradeRequest(p C.UpgradeRequestRef) UpgradeRequest {
+	return UpgradeRequest{
 		release_name: newString(p.release_name),
 		chart:        newString(p.chart),
 		version:      newString(p.version),
@@ -448,8 +511,8 @@ func newHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgrade
 		dry_run:      new_list_mapper(newString)(p.dry_run),
 	}
 }
-func ownHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgradeRequest {
-	return HelmChartUpgradeRequest{
+func ownUpgradeRequest(p C.UpgradeRequestRef) UpgradeRequest {
+	return UpgradeRequest{
 		release_name: ownString(p.release_name),
 		chart:        ownString(p.chart),
 		version:      ownString(p.version),
@@ -463,13 +526,13 @@ func ownHelmChartUpgradeRequest(p C.HelmChartUpgradeRequestRef) HelmChartUpgrade
 		dry_run:      new_list_mapper(ownString)(p.dry_run),
 	}
 }
-func cntHelmChartUpgradeRequest(s *HelmChartUpgradeRequest, cnt *uint) [0]C.HelmChartUpgradeRequestRef {
+func cntUpgradeRequest(s *UpgradeRequest, cnt *uint) [0]C.UpgradeRequestRef {
 	cntHelmEnv(&s.env, cnt)
 	cnt_list_mapper(cntString)(&s.dry_run, cnt)
-	return [0]C.HelmChartUpgradeRequestRef{}
+	return [0]C.UpgradeRequestRef{}
 }
-func refHelmChartUpgradeRequest(p *HelmChartUpgradeRequest, buffer *[]byte) C.HelmChartUpgradeRequestRef {
-	return C.HelmChartUpgradeRequestRef{
+func refUpgradeRequest(p *UpgradeRequest, buffer *[]byte) C.UpgradeRequestRef {
+	return C.UpgradeRequestRef{
 		release_name: refString(&p.release_name, buffer),
 		chart:        refString(&p.chart, buffer),
 		version:      refString(&p.version, buffer),
@@ -527,63 +590,63 @@ func refHelmEnv(p *HelmEnv, buffer *[]byte) C.HelmEnvRef {
 	}
 }
 
-type HelmChartInstallResponse struct {
+type InstallResponse struct {
 	err  []string
 	data string
 }
 
-func newHelmChartInstallResponse(p C.HelmChartInstallResponseRef) HelmChartInstallResponse {
-	return HelmChartInstallResponse{
+func newInstallResponse(p C.InstallResponseRef) InstallResponse {
+	return InstallResponse{
 		err:  new_list_mapper(newString)(p.err),
 		data: newString(p.data),
 	}
 }
-func ownHelmChartInstallResponse(p C.HelmChartInstallResponseRef) HelmChartInstallResponse {
-	return HelmChartInstallResponse{
+func ownInstallResponse(p C.InstallResponseRef) InstallResponse {
+	return InstallResponse{
 		err:  new_list_mapper(ownString)(p.err),
 		data: ownString(p.data),
 	}
 }
-func cntHelmChartInstallResponse(s *HelmChartInstallResponse, cnt *uint) [0]C.HelmChartInstallResponseRef {
+func cntInstallResponse(s *InstallResponse, cnt *uint) [0]C.InstallResponseRef {
 	cnt_list_mapper(cntString)(&s.err, cnt)
-	return [0]C.HelmChartInstallResponseRef{}
+	return [0]C.InstallResponseRef{}
 }
-func refHelmChartInstallResponse(p *HelmChartInstallResponse, buffer *[]byte) C.HelmChartInstallResponseRef {
-	return C.HelmChartInstallResponseRef{
+func refInstallResponse(p *InstallResponse, buffer *[]byte) C.InstallResponseRef {
+	return C.InstallResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}
 }
 
-type HelmChartUpgradeResponse struct {
+type UpgradeResponse struct {
 	err  []string
 	data string
 }
 
-func newHelmChartUpgradeResponse(p C.HelmChartUpgradeResponseRef) HelmChartUpgradeResponse {
-	return HelmChartUpgradeResponse{
+func newUpgradeResponse(p C.UpgradeResponseRef) UpgradeResponse {
+	return UpgradeResponse{
 		err:  new_list_mapper(newString)(p.err),
 		data: newString(p.data),
 	}
 }
-func ownHelmChartUpgradeResponse(p C.HelmChartUpgradeResponseRef) HelmChartUpgradeResponse {
-	return HelmChartUpgradeResponse{
+func ownUpgradeResponse(p C.UpgradeResponseRef) UpgradeResponse {
+	return UpgradeResponse{
 		err:  new_list_mapper(ownString)(p.err),
 		data: ownString(p.data),
 	}
 }
-func cntHelmChartUpgradeResponse(s *HelmChartUpgradeResponse, cnt *uint) [0]C.HelmChartUpgradeResponseRef {
+func cntUpgradeResponse(s *UpgradeResponse, cnt *uint) [0]C.UpgradeResponseRef {
 	cnt_list_mapper(cntString)(&s.err, cnt)
-	return [0]C.HelmChartUpgradeResponseRef{}
+	return [0]C.UpgradeResponseRef{}
 }
-func refHelmChartUpgradeResponse(p *HelmChartUpgradeResponse, buffer *[]byte) C.HelmChartUpgradeResponseRef {
-	return C.HelmChartUpgradeResponseRef{
+func refUpgradeResponse(p *UpgradeResponse, buffer *[]byte) C.UpgradeResponseRef {
+	return C.UpgradeResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}
 }
 
-type HelmChartListRequest struct {
+type ListRequest struct {
 	ns             string
 	env            HelmEnv
 	all            bool
@@ -606,8 +669,8 @@ type HelmChartListRequest struct {
 	selector       string
 }
 
-func newHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
-	return HelmChartListRequest{
+func newListRequest(p C.ListRequestRef) ListRequest {
+	return ListRequest{
 		ns:             newString(p.ns),
 		env:            newHelmEnv(p.env),
 		all:            newC_bool(p.all),
@@ -630,8 +693,8 @@ func newHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
 		selector:       newString(p.selector),
 	}
 }
-func ownHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
-	return HelmChartListRequest{
+func ownListRequest(p C.ListRequestRef) ListRequest {
+	return ListRequest{
 		ns:             ownString(p.ns),
 		env:            ownHelmEnv(p.env),
 		all:            newC_bool(p.all),
@@ -654,12 +717,12 @@ func ownHelmChartListRequest(p C.HelmChartListRequestRef) HelmChartListRequest {
 		selector:       ownString(p.selector),
 	}
 }
-func cntHelmChartListRequest(s *HelmChartListRequest, cnt *uint) [0]C.HelmChartListRequestRef {
+func cntListRequest(s *ListRequest, cnt *uint) [0]C.ListRequestRef {
 	cntHelmEnv(&s.env, cnt)
-	return [0]C.HelmChartListRequestRef{}
+	return [0]C.ListRequestRef{}
 }
-func refHelmChartListRequest(p *HelmChartListRequest, buffer *[]byte) C.HelmChartListRequestRef {
-	return C.HelmChartListRequestRef{
+func refListRequest(p *ListRequest, buffer *[]byte) C.ListRequestRef {
+	return C.ListRequestRef{
 		ns:             refString(&p.ns, buffer),
 		env:            refHelmEnv(&p.env, buffer),
 		all:            refC_bool(&p.all, buffer),
@@ -683,35 +746,35 @@ func refHelmChartListRequest(p *HelmChartListRequest, buffer *[]byte) C.HelmChar
 	}
 }
 
-type HelmChartListResponse struct {
+type ListResponse struct {
 	err  []string
 	data string
 }
 
-func newHelmChartListResponse(p C.HelmChartListResponseRef) HelmChartListResponse {
-	return HelmChartListResponse{
+func newListResponse(p C.ListResponseRef) ListResponse {
+	return ListResponse{
 		err:  new_list_mapper(newString)(p.err),
 		data: newString(p.data),
 	}
 }
-func ownHelmChartListResponse(p C.HelmChartListResponseRef) HelmChartListResponse {
-	return HelmChartListResponse{
+func ownListResponse(p C.ListResponseRef) ListResponse {
+	return ListResponse{
 		err:  new_list_mapper(ownString)(p.err),
 		data: ownString(p.data),
 	}
 }
-func cntHelmChartListResponse(s *HelmChartListResponse, cnt *uint) [0]C.HelmChartListResponseRef {
+func cntListResponse(s *ListResponse, cnt *uint) [0]C.ListResponseRef {
 	cnt_list_mapper(cntString)(&s.err, cnt)
-	return [0]C.HelmChartListResponseRef{}
+	return [0]C.ListResponseRef{}
 }
-func refHelmChartListResponse(p *HelmChartListResponse, buffer *[]byte) C.HelmChartListResponseRef {
-	return C.HelmChartListResponseRef{
+func refListResponse(p *ListResponse, buffer *[]byte) C.ListResponseRef {
+	return C.ListResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}
 }
 
-type HelmChartSearchRequest struct {
+type SearchRequest struct {
 	versions bool
 	regexp   string
 	devel    bool
@@ -720,8 +783,8 @@ type HelmChartSearchRequest struct {
 	env      HelmEnv
 }
 
-func newHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchRequest {
-	return HelmChartSearchRequest{
+func newSearchRequest(p C.SearchRequestRef) SearchRequest {
+	return SearchRequest{
 		versions: newC_bool(p.versions),
 		regexp:   newString(p.regexp),
 		devel:    newC_bool(p.devel),
@@ -730,8 +793,8 @@ func newHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchReq
 		env:      newHelmEnv(p.env),
 	}
 }
-func ownHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchRequest {
-	return HelmChartSearchRequest{
+func ownSearchRequest(p C.SearchRequestRef) SearchRequest {
+	return SearchRequest{
 		versions: newC_bool(p.versions),
 		regexp:   ownString(p.regexp),
 		devel:    newC_bool(p.devel),
@@ -740,13 +803,13 @@ func ownHelmChartSearchRequest(p C.HelmChartSearchRequestRef) HelmChartSearchReq
 		env:      ownHelmEnv(p.env),
 	}
 }
-func cntHelmChartSearchRequest(s *HelmChartSearchRequest, cnt *uint) [0]C.HelmChartSearchRequestRef {
+func cntSearchRequest(s *SearchRequest, cnt *uint) [0]C.SearchRequestRef {
 	cnt_list_mapper(cntString)(&s.terms, cnt)
 	cntHelmEnv(&s.env, cnt)
-	return [0]C.HelmChartSearchRequestRef{}
+	return [0]C.SearchRequestRef{}
 }
-func refHelmChartSearchRequest(p *HelmChartSearchRequest, buffer *[]byte) C.HelmChartSearchRequestRef {
-	return C.HelmChartSearchRequestRef{
+func refSearchRequest(p *SearchRequest, buffer *[]byte) C.SearchRequestRef {
+	return C.SearchRequestRef{
 		versions: refC_bool(&p.versions, buffer),
 		regexp:   refString(&p.regexp, buffer),
 		devel:    refC_bool(&p.devel, buffer),
@@ -756,35 +819,35 @@ func refHelmChartSearchRequest(p *HelmChartSearchRequest, buffer *[]byte) C.Helm
 	}
 }
 
-type HelmChartSearchResponse struct {
+type SearchResponse struct {
 	err  []string
 	data string
 }
 
-func newHelmChartSearchResponse(p C.HelmChartSearchResponseRef) HelmChartSearchResponse {
-	return HelmChartSearchResponse{
+func newSearchResponse(p C.SearchResponseRef) SearchResponse {
+	return SearchResponse{
 		err:  new_list_mapper(newString)(p.err),
 		data: newString(p.data),
 	}
 }
-func ownHelmChartSearchResponse(p C.HelmChartSearchResponseRef) HelmChartSearchResponse {
-	return HelmChartSearchResponse{
+func ownSearchResponse(p C.SearchResponseRef) SearchResponse {
+	return SearchResponse{
 		err:  new_list_mapper(ownString)(p.err),
 		data: ownString(p.data),
 	}
 }
-func cntHelmChartSearchResponse(s *HelmChartSearchResponse, cnt *uint) [0]C.HelmChartSearchResponseRef {
+func cntSearchResponse(s *SearchResponse, cnt *uint) [0]C.SearchResponseRef {
 	cnt_list_mapper(cntString)(&s.err, cnt)
-	return [0]C.HelmChartSearchResponseRef{}
+	return [0]C.SearchResponseRef{}
 }
-func refHelmChartSearchResponse(p *HelmChartSearchResponse, buffer *[]byte) C.HelmChartSearchResponseRef {
-	return C.HelmChartSearchResponseRef{
+func refSearchResponse(p *SearchResponse, buffer *[]byte) C.SearchResponseRef {
+	return C.SearchResponseRef{
 		err:  ref_list_mapper(refString)(&p.err, buffer),
 		data: refString(&p.data, buffer),
 	}
 }
 
-type HelmChartAddRequest struct {
+type AddRequest struct {
 	name                      string
 	url                       string
 	username                  string
@@ -800,8 +863,8 @@ type HelmChartAddRequest struct {
 	env                       HelmEnv
 }
 
-func newHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
-	return HelmChartAddRequest{
+func newAddRequest(p C.AddRequestRef) AddRequest {
+	return AddRequest{
 		name:                      newString(p.name),
 		url:                       newString(p.url),
 		username:                  newString(p.username),
@@ -817,8 +880,8 @@ func newHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
 		env:                       newHelmEnv(p.env),
 	}
 }
-func ownHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
-	return HelmChartAddRequest{
+func ownAddRequest(p C.AddRequestRef) AddRequest {
+	return AddRequest{
 		name:                      ownString(p.name),
 		url:                       ownString(p.url),
 		username:                  ownString(p.username),
@@ -834,12 +897,12 @@ func ownHelmChartAddRequest(p C.HelmChartAddRequestRef) HelmChartAddRequest {
 		env:                       ownHelmEnv(p.env),
 	}
 }
-func cntHelmChartAddRequest(s *HelmChartAddRequest, cnt *uint) [0]C.HelmChartAddRequestRef {
+func cntAddRequest(s *AddRequest, cnt *uint) [0]C.AddRequestRef {
 	cntHelmEnv(&s.env, cnt)
-	return [0]C.HelmChartAddRequestRef{}
+	return [0]C.AddRequestRef{}
 }
-func refHelmChartAddRequest(p *HelmChartAddRequest, buffer *[]byte) C.HelmChartAddRequestRef {
-	return C.HelmChartAddRequestRef{
+func refAddRequest(p *AddRequest, buffer *[]byte) C.AddRequestRef {
+	return C.AddRequestRef{
 		name:                      refString(&p.name, buffer),
 		url:                       refString(&p.url, buffer),
 		username:                  refString(&p.username, buffer),
@@ -856,26 +919,198 @@ func refHelmChartAddRequest(p *HelmChartAddRequest, buffer *[]byte) C.HelmChartA
 	}
 }
 
-type HelmChartAddResponse struct {
+type AddResponse struct {
 	err []string
 }
 
-func newHelmChartAddResponse(p C.HelmChartAddResponseRef) HelmChartAddResponse {
-	return HelmChartAddResponse{
+func newAddResponse(p C.AddResponseRef) AddResponse {
+	return AddResponse{
 		err: new_list_mapper(newString)(p.err),
 	}
 }
-func ownHelmChartAddResponse(p C.HelmChartAddResponseRef) HelmChartAddResponse {
-	return HelmChartAddResponse{
+func ownAddResponse(p C.AddResponseRef) AddResponse {
+	return AddResponse{
 		err: new_list_mapper(ownString)(p.err),
 	}
 }
-func cntHelmChartAddResponse(s *HelmChartAddResponse, cnt *uint) [0]C.HelmChartAddResponseRef {
+func cntAddResponse(s *AddResponse, cnt *uint) [0]C.AddResponseRef {
 	cnt_list_mapper(cntString)(&s.err, cnt)
-	return [0]C.HelmChartAddResponseRef{}
+	return [0]C.AddResponseRef{}
 }
-func refHelmChartAddResponse(p *HelmChartAddResponse, buffer *[]byte) C.HelmChartAddResponseRef {
-	return C.HelmChartAddResponseRef{
+func refAddResponse(p *AddResponse, buffer *[]byte) C.AddResponseRef {
+	return C.AddResponseRef{
+		err: ref_list_mapper(refString)(&p.err, buffer),
+	}
+}
+
+type UninstallRequest struct {
+	ns                   string
+	release_name         string
+	disable_hooks        bool
+	dry_run              bool
+	ignore_not_found     bool
+	keep_history         bool
+	wait                 bool
+	deletion_propagation string
+	timeout              []int64
+	description          string
+	env                  HelmEnv
+}
+
+func newUninstallRequest(p C.UninstallRequestRef) UninstallRequest {
+	return UninstallRequest{
+		ns:                   newString(p.ns),
+		release_name:         newString(p.release_name),
+		disable_hooks:        newC_bool(p.disable_hooks),
+		dry_run:              newC_bool(p.dry_run),
+		ignore_not_found:     newC_bool(p.ignore_not_found),
+		keep_history:         newC_bool(p.keep_history),
+		wait:                 newC_bool(p.wait),
+		deletion_propagation: newString(p.deletion_propagation),
+		timeout:              new_list_mapper_primitive(newC_int64_t)(p.timeout),
+		description:          newString(p.description),
+		env:                  newHelmEnv(p.env),
+	}
+}
+func ownUninstallRequest(p C.UninstallRequestRef) UninstallRequest {
+	return UninstallRequest{
+		ns:                   ownString(p.ns),
+		release_name:         ownString(p.release_name),
+		disable_hooks:        newC_bool(p.disable_hooks),
+		dry_run:              newC_bool(p.dry_run),
+		ignore_not_found:     newC_bool(p.ignore_not_found),
+		keep_history:         newC_bool(p.keep_history),
+		wait:                 newC_bool(p.wait),
+		deletion_propagation: ownString(p.deletion_propagation),
+		timeout:              new_list_mapper(newC_int64_t)(p.timeout),
+		description:          ownString(p.description),
+		env:                  ownHelmEnv(p.env),
+	}
+}
+func cntUninstallRequest(s *UninstallRequest, cnt *uint) [0]C.UninstallRequestRef {
+	cntHelmEnv(&s.env, cnt)
+	return [0]C.UninstallRequestRef{}
+}
+func refUninstallRequest(p *UninstallRequest, buffer *[]byte) C.UninstallRequestRef {
+	return C.UninstallRequestRef{
+		ns:                   refString(&p.ns, buffer),
+		release_name:         refString(&p.release_name, buffer),
+		disable_hooks:        refC_bool(&p.disable_hooks, buffer),
+		dry_run:              refC_bool(&p.dry_run, buffer),
+		ignore_not_found:     refC_bool(&p.ignore_not_found, buffer),
+		keep_history:         refC_bool(&p.keep_history, buffer),
+		wait:                 refC_bool(&p.wait, buffer),
+		deletion_propagation: refString(&p.deletion_propagation, buffer),
+		timeout:              ref_list_mapper_primitive(refC_int64_t)(&p.timeout, buffer),
+		description:          refString(&p.description, buffer),
+		env:                  refHelmEnv(&p.env, buffer),
+	}
+}
+
+type UninstallResponse struct {
+	err  []string
+	data string
+}
+
+func newUninstallResponse(p C.UninstallResponseRef) UninstallResponse {
+	return UninstallResponse{
+		err:  new_list_mapper(newString)(p.err),
+		data: newString(p.data),
+	}
+}
+func ownUninstallResponse(p C.UninstallResponseRef) UninstallResponse {
+	return UninstallResponse{
+		err:  new_list_mapper(ownString)(p.err),
+		data: ownString(p.data),
+	}
+}
+func cntUninstallResponse(s *UninstallResponse, cnt *uint) [0]C.UninstallResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.UninstallResponseRef{}
+}
+func refUninstallResponse(p *UninstallResponse, buffer *[]byte) C.UninstallResponseRef {
+	return C.UninstallResponseRef{
+		err:  ref_list_mapper(refString)(&p.err, buffer),
+		data: refString(&p.data, buffer),
+	}
+}
+
+type LoginRequest struct {
+	hostname   string
+	username   string
+	password   string
+	cert_file  string
+	key_file   string
+	ca_file    string
+	insecure   bool
+	plain_http bool
+	env        HelmEnv
+}
+
+func newLoginRequest(p C.LoginRequestRef) LoginRequest {
+	return LoginRequest{
+		hostname:   newString(p.hostname),
+		username:   newString(p.username),
+		password:   newString(p.password),
+		cert_file:  newString(p.cert_file),
+		key_file:   newString(p.key_file),
+		ca_file:    newString(p.ca_file),
+		insecure:   newC_bool(p.insecure),
+		plain_http: newC_bool(p.plain_http),
+		env:        newHelmEnv(p.env),
+	}
+}
+func ownLoginRequest(p C.LoginRequestRef) LoginRequest {
+	return LoginRequest{
+		hostname:   ownString(p.hostname),
+		username:   ownString(p.username),
+		password:   ownString(p.password),
+		cert_file:  ownString(p.cert_file),
+		key_file:   ownString(p.key_file),
+		ca_file:    ownString(p.ca_file),
+		insecure:   newC_bool(p.insecure),
+		plain_http: newC_bool(p.plain_http),
+		env:        ownHelmEnv(p.env),
+	}
+}
+func cntLoginRequest(s *LoginRequest, cnt *uint) [0]C.LoginRequestRef {
+	cntHelmEnv(&s.env, cnt)
+	return [0]C.LoginRequestRef{}
+}
+func refLoginRequest(p *LoginRequest, buffer *[]byte) C.LoginRequestRef {
+	return C.LoginRequestRef{
+		hostname:   refString(&p.hostname, buffer),
+		username:   refString(&p.username, buffer),
+		password:   refString(&p.password, buffer),
+		cert_file:  refString(&p.cert_file, buffer),
+		key_file:   refString(&p.key_file, buffer),
+		ca_file:    refString(&p.ca_file, buffer),
+		insecure:   refC_bool(&p.insecure, buffer),
+		plain_http: refC_bool(&p.plain_http, buffer),
+		env:        refHelmEnv(&p.env, buffer),
+	}
+}
+
+type LoginResponse struct {
+	err []string
+}
+
+func newLoginResponse(p C.LoginResponseRef) LoginResponse {
+	return LoginResponse{
+		err: new_list_mapper(newString)(p.err),
+	}
+}
+func ownLoginResponse(p C.LoginResponseRef) LoginResponse {
+	return LoginResponse{
+		err: new_list_mapper(ownString)(p.err),
+	}
+}
+func cntLoginResponse(s *LoginResponse, cnt *uint) [0]C.LoginResponseRef {
+	cnt_list_mapper(cntString)(&s.err, cnt)
+	return [0]C.LoginResponseRef{}
+}
+func refLoginResponse(p *LoginResponse, buffer *[]byte) C.LoginResponseRef {
+	return C.LoginResponseRef{
 		err: ref_list_mapper(refString)(&p.err, buffer),
 	}
 }

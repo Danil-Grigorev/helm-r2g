@@ -18,8 +18,8 @@ pub mod binding {
     rust2go::r2g_include_binding!();
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartInstallRequest {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct InstallRequest {
     pub release_name: String,
     pub chart: String,
     pub version: String,
@@ -32,9 +32,9 @@ pub struct HelmChartInstallRequest {
     pub dry_run: Vec<String>,
 }
 
-impl Default for HelmChartInstallRequest {
+impl Default for InstallRequest {
     fn default() -> Self {
-        HelmChartInstallRequest {
+        InstallRequest {
             timeout: vec![300],
             release_name: Default::default(),
             chart: Default::default(),
@@ -49,8 +49,8 @@ impl Default for HelmChartInstallRequest {
     }
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartUpgradeRequest {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct UpgradeRequest {
     pub release_name: String,
     pub chart: String,
     pub version: String,
@@ -64,9 +64,9 @@ pub struct HelmChartUpgradeRequest {
     pub dry_run: Vec<String>,
 }
 
-impl Default for HelmChartUpgradeRequest {
+impl Default for UpgradeRequest {
     fn default() -> Self {
-        HelmChartUpgradeRequest {
+        UpgradeRequest {
             timeout: vec![300],
             release_name: Default::default(),
             chart: Default::default(),
@@ -82,7 +82,7 @@ impl Default for HelmChartUpgradeRequest {
     }
 }
 
-#[derive(rust2go::R2G, Clone, Default)]
+#[derive(rust2go::R2G, Clone, Default, Debug)]
 pub struct HelmEnv {
     // KubeConfig is the path to the kubeconfig file
     pub kube_config: Vec<String>,
@@ -97,20 +97,20 @@ pub struct HelmEnv {
     pub kube_insecure_skip_tls_verify: bool,
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartInstallResponse {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct InstallResponse {
     pub err: Vec<String>,
     pub data: String,
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartUpgradeResponse {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct UpgradeResponse {
     pub err: Vec<String>,
     pub data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default)]
-pub struct HelmChartListRequest {
+#[derive(rust2go::R2G, Clone, Default, Debug)]
+pub struct ListRequest {
     pub ns: String,
     pub env: HelmEnv,
     // All ignores the limit/offset
@@ -144,14 +144,14 @@ pub struct HelmChartListRequest {
     pub selector: String,
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartListResponse {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct ListResponse {
     pub err: Vec<String>,
     pub data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default)]
-pub struct HelmChartSearchRequest {
+#[derive(rust2go::R2G, Clone, Default, Debug)]
+pub struct SearchRequest {
     pub versions: bool,
     pub regexp: String,
     pub devel: bool,
@@ -160,14 +160,14 @@ pub struct HelmChartSearchRequest {
     pub env: HelmEnv,
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartSearchResponse {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct SearchResponse {
     pub err: Vec<String>,
     pub data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default)]
-pub struct HelmChartAddRequest {
+#[derive(rust2go::R2G, Clone, Default, Debug)]
+pub struct AddRequest {
     pub name: String,
     pub url: String,
     pub username: String,
@@ -184,8 +184,67 @@ pub struct HelmChartAddRequest {
     pub env: HelmEnv,
 }
 
-#[derive(rust2go::R2G, Clone)]
-pub struct HelmChartAddResponse {
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct AddResponse {
+    pub err: Vec<String>,
+}
+
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct UninstallRequest {
+    pub ns: String,
+    pub release_name: String,
+    pub disable_hooks: bool,
+    pub dry_run: bool,
+    pub ignore_not_found: bool,
+    pub keep_history: bool,
+    pub wait: bool,
+    pub deletion_propagation: String,
+    pub timeout: Vec<i64>,
+    pub description: String,
+
+    pub env: HelmEnv,
+}
+
+impl Default for UninstallRequest {
+    fn default() -> Self {
+        UninstallRequest {
+            timeout: vec![300],
+            ns: Default::default(),
+            release_name: Default::default(),
+            disable_hooks: Default::default(),
+            dry_run: Default::default(),
+            ignore_not_found: Default::default(),
+            keep_history: Default::default(),
+            wait: Default::default(),
+            deletion_propagation: Default::default(),
+            description: Default::default(),
+            env: Default::default(),
+        }
+    }
+}
+
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct UninstallResponse {
+    pub err: Vec<String>,
+    pub data: String,
+}
+
+#[derive(rust2go::R2G, Clone, Debug, Default)]
+pub struct LoginRequest {
+    pub hostname: String,
+    pub username: String,
+    pub password: String,
+    pub cert_file: String,
+    pub key_file: String,
+    pub ca_file: String,
+    pub insecure: bool,
+    pub plain_http: bool,
+
+    pub env: HelmEnv,
+}
+
+#[derive(rust2go::R2G, Clone, Debug)]
+pub struct LoginResponse {
     pub err: Vec<String>,
 }
 
@@ -200,13 +259,17 @@ pub struct HelmChartAddResponse {
 #[rust2go::r2g]
 pub trait HelmCall {
     #[drop_safe_ret]
-    async fn install(req: HelmChartInstallRequest) -> HelmChartInstallResponse;
+    async fn install(req: InstallRequest) -> InstallResponse;
     #[drop_safe_ret]
-    async fn upgrade(req: HelmChartUpgradeRequest) -> HelmChartUpgradeResponse;
+    async fn upgrade(req: UpgradeRequest) -> UpgradeResponse;
     #[drop_safe_ret]
-    async fn list(req: HelmChartListRequest) -> HelmChartListResponse;
+    async fn uninstall(req: UninstallRequest) -> UninstallResponse;
     #[drop_safe_ret]
-    async fn repo_add(req: HelmChartAddRequest) -> HelmChartAddResponse;
+    async fn list(req: ListRequest) -> ListResponse;
     #[drop_safe_ret]
-    async fn repo_search(req: HelmChartSearchRequest) -> HelmChartSearchResponse;
+    async fn repo_add(req: AddRequest) -> AddResponse;
+    #[drop_safe_ret]
+    async fn repo_search(req: SearchRequest) -> SearchResponse;
+    #[drop_safe_ret]
+    async fn registry_login(req: LoginRequest) -> LoginResponse;
 }

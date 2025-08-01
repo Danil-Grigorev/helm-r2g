@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,8 +20,30 @@ func init() {
 	HelmCallImpl = Helm{}
 }
 
+// registry_login implements HelmCall.
+func (d Helm) registry_login(req *LoginRequest) (resp LoginResponse) {
+	login := login{
+		hostname:  req.hostname,
+		username:  req.username,
+		password:  req.password,
+		certFile:  req.cert_file,
+		keyFile:   req.key_file,
+		caFile:    req.ca_file,
+		insecure:  req.insecure,
+		plainHTTP: req.plain_http,
+	}
+
+	if err := registryLogin(log.Default(), initSettings(req.env, ""), login); err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	return
+}
+
 // install implements DemoCall.
-func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallResponse) {
+func (d Helm) install(req *InstallRequest) (resp InstallResponse) {
 	install := install{
 		ReleaseName:     req.release_name,
 		ChartRef:        req.chart,
@@ -30,7 +53,7 @@ func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallRespon
 		DryRunOption:    req.dry_run,
 	}
 
-	set(req.timeout, &install.Timeout)
+	install.Timeout = get(req.timeout)
 
 	if len(req.values) > 0 {
 		if err := json.Unmarshal(req.values, &install.Values); err != nil {
@@ -60,7 +83,7 @@ func (d Helm) install(req *HelmChartInstallRequest) (resp HelmChartInstallRespon
 }
 
 // upgrade implements HelmCall.
-func (d Helm) upgrade(req *HelmChartUpgradeRequest) (resp HelmChartUpgradeResponse) {
+func (d Helm) upgrade(req *UpgradeRequest) (resp UpgradeResponse) {
 	upgrade := upgrade{
 		ReleaseName:  req.release_name,
 		ChartRef:     req.chart,
@@ -71,7 +94,7 @@ func (d Helm) upgrade(req *HelmChartUpgradeRequest) (resp HelmChartUpgradeRespon
 		ResetValues:  req.reset_values,
 	}
 
-	set(req.timeout, &upgrade.Timeout)
+	upgrade.Timeout = get(req.timeout)
 
 	if len(req.values) > 0 {
 		if err := json.Unmarshal(req.values, &upgrade.Values); err != nil {
@@ -101,7 +124,7 @@ func (d Helm) upgrade(req *HelmChartUpgradeRequest) (resp HelmChartUpgradeRespon
 }
 
 // list implements HelmCall.
-func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
+func (d Helm) list(req *ListRequest) (resp ListResponse) {
 	logger := log.Default()
 
 	actionConfig, err := initActionConfigList(initSettings(req.env, req.ns), logger, req.all_namespaces)
@@ -154,8 +177,44 @@ func (d Helm) list(req *HelmChartListRequest) (resp HelmChartListResponse) {
 	return
 }
 
+// uninstall implements HelmCall.
+func (d Helm) uninstall(req *UninstallRequest) (resp UninstallResponse) {
+	settings := initSettings(req.env, req.ns)
+
+	uninstall := uninstall{
+		ReleaseName:         req.release_name,
+		KeepHistory:         req.keep_history,
+		DryRun:              req.dry_run,
+		DisableHooks:        req.disable_hooks,
+		IgnoreNotFound:      req.ignore_not_found,
+		Wait:                req.wait,
+		Description:         req.description,
+		DeletionPropagation: req.deletion_propagation,
+	}
+
+	uninstall.Timeout = get(req.timeout)
+
+	release, err := runUninstall(log.Default(), settings, uninstall)
+	if err != nil {
+		resp.err = append(resp.err, err.Error())
+
+		return
+	}
+
+	data, err := json.Marshal(release)
+	if err != nil {
+		resp.err = append(resp.err, fmt.Errorf("failed to marshal release from uninstall: %w", err).Error())
+
+		return
+	}
+
+	resp.data = string(data)
+
+	return
+}
+
 // search implements HelmCall.
-func (d Helm) repo_search(req *HelmChartSearchRequest) (resp HelmChartSearchResponse) {
+func (d Helm) repo_search(req *SearchRequest) (resp SearchResponse) {
 	settings := initSettings(req.env, "")
 
 	search := searchRepoOptions{
@@ -190,7 +249,7 @@ func (d Helm) repo_search(req *HelmChartSearchRequest) (resp HelmChartSearchResp
 }
 
 // repo_add implements HelmCall.
-func (d Helm) repo_add(req *HelmChartAddRequest) (resp HelmChartAddResponse) {
+func (d Helm) repo_add(req *AddRequest) (resp AddResponse) {
 	settings := initSettings(req.env, "")
 
 	add := repoAddOptions{
@@ -219,10 +278,12 @@ func (d Helm) repo_add(req *HelmChartAddRequest) (resp HelmChartAddResponse) {
 	return
 }
 
-func set[T any](from []T, to *T) {
+func get[T any](from []T) T {
 	if len(from) > 0 {
-		*to = from[0]
+		return from[0]
 	}
+
+	return *new(T)
 }
 
 func runList(listClient *action.List) ([]*release.Release, error) {
@@ -238,11 +299,11 @@ var helmDriver string = os.Getenv("HELM_DRIVER")
 
 func initSettings(env HelmEnv, namespace string) *cli.EnvSettings {
 	settings := cli.New()
-	set(env.kube_config, &settings.KubeConfig)
-	set(env.kube_context, &settings.KubeContext)
-	set(env.kube_token, &settings.KubeToken)
-	set(env.kube_ca_file, &settings.KubeCaFile)
-	settings.KubeInsecureSkipTLSVerify = env.kube_insecure_skip_tls_verify
+	settings.KubeConfig = cmp.Or(get(env.kube_config), settings.KubeConfig)
+	settings.KubeContext = cmp.Or(get(env.kube_context), settings.KubeContext)
+	settings.KubeToken = cmp.Or(get(env.kube_token), settings.KubeToken)
+	settings.KubeCaFile = cmp.Or(get(env.kube_ca_file), settings.KubeCaFile)
+	settings.KubeInsecureSkipTLSVerify = settings.KubeInsecureSkipTLSVerify || env.kube_insecure_skip_tls_verify
 	settings.SetNamespace(namespace)
 
 	return settings

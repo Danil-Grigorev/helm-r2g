@@ -34,7 +34,7 @@ func runInstall(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	installClient := action.NewInstall(actionConfig)
 
 	installClient.DryRunOption = "none"
-	set(install.DryRunOption, &installClient.DryRunOption)
+	installClient.DryRunOption = get(install.DryRunOption)
 
 	installClient.ReleaseName = install.ReleaseName
 	chartRef := install.ChartRef

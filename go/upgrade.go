@@ -41,7 +41,7 @@ func runUpgrade(ctx context.Context, logger *log.Logger, settings *cli.EnvSettin
 	upgradeClient.ReuseValues = upgrade.ReuseValues
 	upgradeClient.ResetValues = upgrade.ResetValues
 	upgradeClient.Timeout = time.Duration(upgrade.Timeout) * time.Second
-	set(upgrade.DryRunOption, &upgradeClient.DryRunOption)
+	upgradeClient.DryRunOption = get(upgrade.DryRunOption)
 
 	registryClient, err := newRegistryClientTLS(
 		settings,
