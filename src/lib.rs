@@ -18,234 +18,190 @@ pub mod binding {
     rust2go::r2g_include_binding!();
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct InstallRequest {
-    pub release_name: String,
-    pub chart: String,
-    pub version: String,
-    pub ns: String,
-    pub wait: bool,
-    pub timeout: Vec<i64>,
-    pub create_namespace: bool,
-    pub values: Vec<u8>,
-    pub env: HelmEnv,
-    pub dry_run: Vec<String>,
+pub mod env;
+pub mod install;
+pub mod list;
+pub mod registry_login;
+pub mod repo_add;
+pub mod repo_search;
+pub mod uninstall;
+pub mod upgrade;
+
+#[derive(rust2go::R2G)]
+struct InstallRequest {
+    release_name: String,
+    chart: String,
+    version: String,
+    ns: String,
+    wait: bool,
+    timeout: Vec<i64>,
+    create_namespace: bool,
+    values: Vec<u8>,
+    env: HelmEnv,
+    dry_run: Vec<String>,
 }
 
-impl Default for InstallRequest {
-    fn default() -> Self {
-        InstallRequest {
-            timeout: vec![300],
-            release_name: Default::default(),
-            chart: Default::default(),
-            version: Default::default(),
-            ns: Default::default(),
-            wait: Default::default(),
-            create_namespace: Default::default(),
-            values: Default::default(),
-            env: Default::default(),
-            dry_run: Default::default(),
-        }
-    }
+#[derive(rust2go::R2G)]
+struct UpgradeRequest {
+    release_name: String,
+    chart: String,
+    version: String,
+    ns: String,
+    wait: bool,
+    timeout: Vec<i64>,
+    values: Vec<u8>,
+    env: HelmEnv,
+    reset_values: bool,
+    reuse_values: bool,
+    dry_run: Vec<String>,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct UpgradeRequest {
-    pub release_name: String,
-    pub chart: String,
-    pub version: String,
-    pub ns: String,
-    pub wait: bool,
-    pub timeout: Vec<i64>,
-    pub values: Vec<u8>,
-    pub env: HelmEnv,
-    pub reset_values: bool,
-    pub reuse_values: bool,
-    pub dry_run: Vec<String>,
-}
-
-impl Default for UpgradeRequest {
-    fn default() -> Self {
-        UpgradeRequest {
-            timeout: vec![300],
-            release_name: Default::default(),
-            chart: Default::default(),
-            version: Default::default(),
-            ns: Default::default(),
-            wait: Default::default(),
-            values: Default::default(),
-            env: Default::default(),
-            dry_run: Default::default(),
-            reset_values: Default::default(),
-            reuse_values: Default::default(),
-        }
-    }
-}
-
-#[derive(rust2go::R2G, Clone, Default, Debug)]
-pub struct HelmEnv {
+#[derive(rust2go::R2G)]
+struct HelmEnv {
     // KubeConfig is the path to the kubeconfig file
-    pub kube_config: Vec<String>,
+    kube_config: Vec<String>,
     // KubeContext is the name of the kubeconfig context.
-    pub kube_context: Vec<String>,
+    kube_context: Vec<String>,
     // Bearer KubeToken used for authentication
-    pub kube_token: Vec<String>,
+    kube_token: Vec<String>,
     // Custom certificate authority file.
-    pub kube_ca_file: Vec<String>,
+    kube_ca_file: Vec<String>,
     // KubeInsecureSkipTLSVerify indicates if server's certificate will not be checked for validity.
     // This makes the HTTPS connections insecure
-    pub kube_insecure_skip_tls_verify: bool,
+    kube_insecure_skip_tls_verify: bool,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct InstallResponse {
-    pub err: Vec<String>,
-    pub data: String,
+#[derive(rust2go::R2G)]
+struct InstallResponse {
+    err: Vec<String>,
+    data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct UpgradeResponse {
-    pub err: Vec<String>,
-    pub data: String,
+#[derive(rust2go::R2G)]
+struct UpgradeResponse {
+    err: Vec<String>,
+    data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default, Debug)]
-pub struct ListRequest {
-    pub ns: String,
-    pub env: HelmEnv,
+#[derive(rust2go::R2G)]
+struct ListRequest {
+    ns: String,
+    env: HelmEnv,
     // All ignores the limit/offset
-    pub all: bool,
+    all: bool,
     // AllNamespaces searches across namespaces
-    pub all_namespaces: bool,
+    all_namespaces: bool,
     // Sort indicates the sort to use
     //
     // see pkg/releaseutil for several useful sorters
-    pub sort: u64,
+    sort: u64,
     // Overrides the default lexicographic sorting
-    pub by_date: bool,
-    pub sort_reverse: bool,
+    by_date: bool,
+    sort_reverse: bool,
     // StateMask accepts a bitmask of states for items to show.
     // The default is ListDeployed
-    pub state_mask: u64,
+    state_mask: u64,
     // Limit is the number of items to return per Run()
-    pub limit: i64,
+    limit: i64,
     // Offset is the starting index for the Run() call
-    pub offset: i64,
+    offset: i64,
     // Filter is a filter that is applied to the results
-    pub filter: String,
-    pub no_headers: bool,
-    pub time_format: String,
-    pub uninstalled: bool,
-    pub superseded: bool,
-    pub uninstalling: bool,
-    pub deployed: bool,
-    pub failed: bool,
-    pub pending: bool,
-    pub selector: String,
+    filter: String,
+    no_headers: bool,
+    time_format: String,
+    uninstalled: bool,
+    superseded: bool,
+    uninstalling: bool,
+    deployed: bool,
+    failed: bool,
+    pending: bool,
+    selector: String,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct ListResponse {
-    pub err: Vec<String>,
-    pub data: String,
+#[derive(rust2go::R2G)]
+struct ListResponse {
+    err: Vec<String>,
+    data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default, Debug)]
-pub struct SearchRequest {
-    pub versions: bool,
-    pub regexp: String,
-    pub devel: bool,
-    pub version: String,
-    pub terms: Vec<String>,
-    pub env: HelmEnv,
+#[derive(rust2go::R2G)]
+struct SearchRequest {
+    versions: bool,
+    regexp: String,
+    devel: bool,
+    version: String,
+    terms: Vec<String>,
+    env: HelmEnv,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct SearchResponse {
-    pub err: Vec<String>,
-    pub data: String,
+#[derive(rust2go::R2G)]
+struct SearchResponse {
+    err: Vec<String>,
+    data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Default, Debug)]
-pub struct AddRequest {
-    pub name: String,
-    pub url: String,
-    pub username: String,
-    pub password: String,
-    pub password_from_stdin_opt: bool,
-    pub pass_credentials_all: bool,
-    pub force_update: bool,
-    pub allow_deprecated_repos: bool,
-    pub cert_file: String,
-    pub key_file: String,
-    pub ca_file: String,
-    pub insecure_skip_tls_sverify: bool,
+#[derive(rust2go::R2G)]
+struct AddRequest {
+    name: String,
+    url: String,
+    username: String,
+    password: String,
+    password_from_stdin_opt: bool,
+    pass_credentials_all: bool,
+    force_update: bool,
+    allow_deprecated_repos: bool,
+    cert_file: String,
+    key_file: String,
+    ca_file: String,
+    insecure_skip_tls_sverify: bool,
 
-    pub env: HelmEnv,
+    env: HelmEnv,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct AddResponse {
-    pub err: Vec<String>,
+#[derive(rust2go::R2G)]
+struct AddResponse {
+    err: Vec<String>,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct UninstallRequest {
-    pub ns: String,
-    pub release_name: String,
-    pub disable_hooks: bool,
-    pub dry_run: bool,
-    pub ignore_not_found: bool,
-    pub keep_history: bool,
-    pub wait: bool,
-    pub deletion_propagation: String,
-    pub timeout: Vec<i64>,
-    pub description: String,
+#[derive(rust2go::R2G)]
+struct UninstallRequest {
+    ns: String,
+    release_name: String,
+    disable_hooks: bool,
+    dry_run: bool,
+    ignore_not_found: bool,
+    keep_history: bool,
+    wait: bool,
+    deletion_propagation: String,
+    timeout: Vec<i64>,
+    description: String,
 
-    pub env: HelmEnv,
+    env: HelmEnv,
 }
 
-impl Default for UninstallRequest {
-    fn default() -> Self {
-        UninstallRequest {
-            timeout: vec![300],
-            ns: Default::default(),
-            release_name: Default::default(),
-            disable_hooks: Default::default(),
-            dry_run: Default::default(),
-            ignore_not_found: Default::default(),
-            keep_history: Default::default(),
-            wait: Default::default(),
-            deletion_propagation: Default::default(),
-            description: Default::default(),
-            env: Default::default(),
-        }
-    }
+#[derive(rust2go::R2G)]
+struct UninstallResponse {
+    err: Vec<String>,
+    data: String,
 }
 
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct UninstallResponse {
-    pub err: Vec<String>,
-    pub data: String,
+#[derive(rust2go::R2G)]
+struct LoginRequest {
+    hostname: String,
+    username: String,
+    password: String,
+    cert_file: String,
+    key_file: String,
+    ca_file: String,
+    insecure: bool,
+    plain_http: bool,
+
+    env: HelmEnv,
 }
 
-#[derive(rust2go::R2G, Clone, Debug, Default)]
-pub struct LoginRequest {
-    pub hostname: String,
-    pub username: String,
-    pub password: String,
-    pub cert_file: String,
-    pub key_file: String,
-    pub ca_file: String,
-    pub insecure: bool,
-    pub plain_http: bool,
-
-    pub env: HelmEnv,
-}
-
-#[derive(rust2go::R2G, Clone, Debug)]
-pub struct LoginResponse {
-    pub err: Vec<String>,
+#[derive(rust2go::R2G)]
+struct LoginResponse {
+    err: Vec<String>,
 }
 
 // Define the call trait.
@@ -257,7 +213,7 @@ pub struct LoginResponse {
 // If you want to use your own binding mod name, use:
 // `#[rust2go::r2g(binding)]`
 #[rust2go::r2g]
-pub trait HelmCall {
+trait HelmCall {
     #[drop_safe_ret]
     async fn install(req: InstallRequest) -> InstallResponse;
     #[drop_safe_ret]
