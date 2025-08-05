@@ -27,6 +27,15 @@ pub mod repo_search;
 pub mod uninstall;
 pub mod upgrade;
 
+pub use env::Env;
+pub use install::{Install, InstallError, install};
+pub use list::{List, ListError, list};
+pub use registry_login::{RegistryLogin, RegistryLoginError, registry_login};
+pub use repo_add::{RepoAdd, RepoAddError, repo_add};
+pub use repo_search::{RepoSearch, RepoSearchError, repo_search};
+pub use uninstall::{Uninstall, UninstallError, uninstall};
+pub use upgrade::{Upgrade, UpgradeError, upgrade};
+
 #[derive(rust2go::R2G)]
 struct InstallRequest {
     release_name: String,
